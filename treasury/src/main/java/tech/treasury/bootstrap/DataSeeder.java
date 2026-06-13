@@ -33,18 +33,18 @@ public class DataSeeder implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        if (!agents.existsById(DEMO_AGENT_ID)) {
-            agents.save(new AgentEntity(
-                    DEMO_AGENT_ID,
-                    "Research Agent",
-                    AgentService.sha256Hex(DEMO_API_KEY),
-                    500_000,        // 0.50 USDC per-tx cap
-                    5_000_000,      // 5.00 USDC daily budget
-                    5,              // 5 payments / minute
-                    60,             // min counterparty reputation
-                    Set.of(GOOD_MERCHANT, SKETCHY_MERCHANT),
-                    Set.of(USDC)));
-        }
+        // Upsert (not create-if-absent) so the demo agent always has the correct key hash + policy,
+        // even if a stale row exists.
+        agents.save(new AgentEntity(
+                DEMO_AGENT_ID,
+                "Research Agent",
+                AgentService.sha256Hex(DEMO_API_KEY),
+                500_000,        // 0.50 USDC per-tx cap
+                5_000_000,      // 5.00 USDC daily budget
+                5,              // 5 payments / minute
+                60,             // min counterparty reputation
+                Set.of(GOOD_MERCHANT, SKETCHY_MERCHANT),
+                Set.of(USDC)));
         reputation.set(GOOD_MERCHANT, 85);
         reputation.set(SKETCHY_MERCHANT, 12);
     }

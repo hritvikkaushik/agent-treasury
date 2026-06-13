@@ -1,0 +1,17 @@
+# Tests use a SEPARATE database so they never pollute the runtime `treasury` DB.
+# Create it with: ./scripts/dev-db.sh up  (which also creates treasury_test).
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/treasury_test
+    username: treasury
+    password: treasury
+  jpa:
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true

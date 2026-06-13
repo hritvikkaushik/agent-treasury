@@ -19,7 +19,11 @@ case "${1:-up}" in
     fi
     for _ in $(seq 1 30); do
       if docker exec "$NAME" pg_isready -U treasury >/dev/null 2>&1; then
-        echo "postgres ready on localhost:5432 (db=treasury user=treasury)"
+        # Separate DB for tests so they never touch runtime data.
+        docker exec "$NAME" psql -U treasury -d treasury -tc \
+          "SELECT 1 FROM pg_database WHERE datname='treasury_test'" 2>/dev/null | grep -q 1 \
+          || docker exec "$NAME" psql -U treasury -d treasury -c "CREATE DATABASE treasury_test" >/dev/null
+        echo "postgres ready on localhost:5432 (db=treasury + treasury_test, user=treasury)"
         exit 0
       fi
       sleep 1
