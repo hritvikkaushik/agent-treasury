@@ -8,18 +8,17 @@
 
 ## STATE (update this block every session)
 
-- **Phase:** 1 (treasury core) **COMPLETE** — Stages 1-3 done, 29 tests green, live HTTP demo verified.
-  Phase-0 gate also passed (real Fuji settlement).
-- **Last completed:** Stage 3 (proxy + orchestration). Booted the real app against Postgres and drove
-  `/proxy`: no-key→401; good merchant→200 SETTLED+txHash; sketchy (rep 12)→402
-  REPUTATION_BELOW_THRESHOLD; over-cap→402 PER_TX_CAP_EXCEEDED; idempotent replay→same intent, charged
-  once. (Phase-0 smoke test earlier: real Fuji settle, tx 0x81296747…b7230d95, status 0x1.)
-- **Next action:** **Phase 2 — chain integration.** (a) Port `Eip3009Signer` into a real
-  `PaymentExecutor` (sign → facilitator `/settle`); (b) ERC-8004: deploy registries to Fuji
-  (`contracts/`), web3j `ReputationProvider` reading `getSummary` + async feedback writer;
-  (c) reconciliation job. The two stub interfaces are the seams to swap.
-- **Blockers:** none. (x402 settle already proven; ERC-8004 deploy uses the funded treasury key on the
-  Linux box.)
+- **Phase:** 2 (chain integration). Phase 1 complete (31 tests). **Real `PaymentExecutor` done +
+  live-verified** — `/proxy` now produces real Fuji settlements.
+- **Last completed:** `X402PaymentExecutor` (gated on `x402.enabled=true`): signs EIP-3009 + settles
+  via facilitator. Live run: agent paid good merchant 0.05 USDC → real tx
+  `0x762b0fe1…6ab6effe` (status 0x1, block 56239960); sketchy merchant still 402-blocked by reputation
+  with no chain call. Stub stays default for offline tests (31 green).
+- **Next action:** Continue Phase 2 — (a) deploy ERC-8004 to Fuji (`contracts/`), (b) real web3j
+  `ReputationProvider` reading `getSummary` + Caffeine cache (mark @Primary to supersede the stub),
+  (c) async `giveFeedback` writer post-settlement, (d) reconciliation `@Scheduled` job. Also worth:
+  move the executor network call outside the DB tx in `TreasuryService`.
+- **Blockers:** none.
 
 Wallet roles recap: **treasury `0x44bbaa…`** = payer (USDC ✓ + AVAX ✓);
 **facilitator `0x6f40…`** = settlement submitter (AVAX ✓) and current `PAY_TO`.
@@ -70,9 +69,11 @@ Wallet roles recap: **treasury `0x44bbaa…`** = payer (USDC ✓ + AVAX ✓);
   - [x] `POST /proxy` + `X-Agent-Key` auth; `ReputationProvider` + `PaymentExecutor` interfaces with
         stubs; `TreasuryService` orchestrator; 29 tests + live HTTP demo verified. Virtual threads on.
 
-## Phase 2 — Chain integration (next). Swap the Stage-3 stubs for real impls.
-- [ ] `PaymentExecutor`: port `Eip3009Signer` from smoke-test; sign → facilitator `/settle` →
-      real tx hash. (Move the network call outside the DB tx — see TreasuryService note.)
+## Phase 2 — Chain integration. Swap the Stage-3 stubs for real impls.
+- [x] **`PaymentExecutor` (real)** ✅ (commit 7577bc8). `X402PaymentExecutor` (gated on
+      `x402.enabled=true`) signs EIP-3009 + settles via facilitator. Live-verified: `/proxy` payment
+      → real Fuji tx `0x762b0fe1…6ab6effe` (status 0x1, block 56239960); sketchy still 402-blocked
+      with no chain call. Stub remains the default for offline tests.
 - [ ] Deploy ERC-8004 registries to Fuji (`contracts/`); record addresses in `.env`; seed merchants.
 - [ ] `ReputationProvider`: web3j read of `getSummary` + Caffeine cache (30s TTL). Mark @Primary or
       use a profile so it supersedes the stub.
