@@ -8,17 +8,19 @@
 
 ## STATE (update this block every session)
 
-- **Phase:** 0 — **`/verify` PASSES (`isValid:true`).** One faucet step from a green settlement.
-- **Last completed:** Funded treasury with USDC (40 USDC). Re-ran smoke test: `/verify` → `isValid:true`
-  with correct payer. `/settle` failed only because the **facilitator signer wallet `0x6f40…` has 0
-  AVAX** (`insufficient funds for gas`, tx cost ~0.00034 AVAX). Everything else works.
-- **Next action:** Fund facilitator wallet `0x6f409644a8a0b598284e8ca1a7562759f2189fbf` with test
-  AVAX (Core console faucet: build.avax.network/console/primary-network/faucet). Then re-run
-  `./scripts/smoke.sh` → expect `/settle success:true` + Snowtrace tx. Closes the Phase-0 gate.
-- **Blockers:** facilitator wallet has no AVAX for gas (manual faucet step).
+- **Phase:** 0 — **GATE PASSED.** Full x402/EIP-3009 settlement works end-to-end on Fuji.
+- **Last completed:** Smoke test green: `/verify isValid:true`, `/settle success:true`. On-chain
+  receipt **status 0x1**, block 56239567, tx
+  `0x81296747cb0688c44817649d6e4de798ffa112f17bea396fcc537040b7230d95`; `PAY_TO` received exactly
+  0.01 USDC; gasless for the payer (facilitator submitted + paid gas). Signing core
+  (`Eip3009Signer`) is proven and ready to port into the treasury.
+- **Next action:** Two parallel tracks now unblocked — (a) **ERC-8004 deploy** to Fuji + seed the two
+  demo merchants (`contracts/README.md`); (b) **Phase 1 treasury core** (no chain deps). Either can
+  start.
+- **Blockers:** none.
 
-Wallet roles recap: **treasury `0x44bbaa…`** = payer (needs USDC ✓ + a little AVAX ✓);
-**facilitator `0x6f40…`** = settlement submitter (needs AVAX ✗) and current `PAY_TO`.
+Wallet roles recap: **treasury `0x44bbaa…`** = payer (USDC ✓ + AVAX ✓);
+**facilitator `0x6f40…`** = settlement submitter (AVAX ✓) and current `PAY_TO`.
 
 ---
 
@@ -37,10 +39,8 @@ Wallet roles recap: **treasury `0x44bbaa…`** = payer (needs USDC ✓ + a littl
       set `PAY_TO`. Fund treasury with test USDC + AVAX; facilitator with AVAX.
 - [x] **Facilitator:** running on Fuji via `docker run -d` (`infra/facilitator/`). `/supported`
       confirms v1 `avalanche-fuji` + v2 `eip155:43113`.
-- [~] **Smoke test:** `./scripts/smoke.sh`. Signing path **validated** (facilitator accepted the
-      signature; failed only on `insufficient_funds`). Re-run after funding USDC → expect
-      `/verify isValid:true`, `/settle success:true` + tx on `https://testnet.snowtrace.io`.
-      → **Go/no-go gate; signing half already passed.**
+- [x] **Smoke test:** PASSED. `/verify isValid:true`, `/settle success:true`, on-chain status 0x1
+      (tx `0x81296747…b7230d95`). Go/no-go gate cleared — the full sign→verify→settle path works.
 - [ ] **ERC-8004 deploy:** deploy Identity + Reputation registries to Fuji (`contracts/README.md`).
       Record addresses in `.env` (`IDENTITY_REGISTRY_ADDRESS`, `REPUTATION_REGISTRY_ADDRESS`).
 - [ ] **Seed demo agents:** register `good-data-co` (reputation ~85) and `sketchy-data-inc` (~12);
@@ -88,5 +88,9 @@ Wallet roles recap: **treasury `0x44bbaa…`** = payer (needs USDC ✓ + a littl
 
 ## Progress log
 - **2026-06-13** Design doc + spike findings written; all design unknowns resolved via source-verified
-  recon. Repo scaffolded; Phase-0 smoke-test bundle authored (unrun — needs Fuji wallet). Next:
-  live Phase-0 execution on the Linux box.
+  recon. Repo scaffolded; Phase-0 smoke-test bundle authored.
+- **2026-06-13** Closed Mac→Linux dev loop (`ssh homelinux`; Docker-only builds). Facilitator running
+  on Fuji. **Phase-0 gate PASSED** — first real x402/EIP-3009 settlement on Fuji, tx
+  `0x81296747…b7230d95` (status 0x1, 0.01 USDC moved, gasless for payer). Fixed several
+  `.env`/`--env-file` quoting traps and Linux GitHub auth along the way. Next: ERC-8004 deploy +
+  Phase 1 treasury core.
