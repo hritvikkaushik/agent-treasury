@@ -8,16 +8,15 @@
 
 ## STATE (update this block every session)
 
-- **Phase:** 2 (chain integration). Phase 1 complete (31 tests). **Real `PaymentExecutor` done +
-  live-verified** — `/proxy` now produces real Fuji settlements.
-- **Last completed:** `X402PaymentExecutor` (gated on `x402.enabled=true`): signs EIP-3009 + settles
-  via facilitator. Live run: agent paid good merchant 0.05 USDC → real tx
-  `0x762b0fe1…6ab6effe` (status 0x1, block 56239960); sketchy merchant still 402-blocked by reputation
-  with no chain call. Stub stays default for offline tests (31 green).
-- **Next action:** Continue Phase 2 — (a) deploy ERC-8004 to Fuji (`contracts/`), (b) real web3j
-  `ReputationProvider` reading `getSummary` + Caffeine cache (mark @Primary to supersede the stub),
-  (c) async `giveFeedback` writer post-settlement, (d) reconciliation `@Scheduled` job. Also worth:
-  move the executor network call outside the DB tx in `TreasuryService`.
+- **Phase:** 2 (chain integration). Phase 1 complete (31 tests). **Real x402 settlement AND real
+  ERC-8004 reputation both done + live-verified together.**
+- **Last completed:** ERC-8004 deployed to Fuji (Identity `0x313b59f6…8598`, Reputation
+  `0x0455293B…5A3a`; merchants seeded good=85/sketchy=12). web3j `Erc8004ReputationProvider` wired.
+  Live run with x402+erc8004 both on: good (chain rep 85)→SETTLED real tx `0x41f05847…` (status 0x1,
+  block 56240127); sketchy (chain rep 12)→402 no settle. 31 offline tests still green.
+- **Next action:** (a) async `giveFeedback` writer post-settlement (reputation loop closes; great demo
+  beat); (b) reconciliation `@Scheduled` job; (c) move executor network call outside the DB tx.
+  Then a thin dashboard for the demo (DESIGN §4.6).
 - **Blockers:** none.
 
 Wallet roles recap: **treasury `0x44bbaa…`** = payer (USDC ✓ + AVAX ✓);
@@ -74,11 +73,16 @@ Wallet roles recap: **treasury `0x44bbaa…`** = payer (USDC ✓ + AVAX ✓);
       `x402.enabled=true`) signs EIP-3009 + settles via facilitator. Live-verified: `/proxy` payment
       → real Fuji tx `0x762b0fe1…6ab6effe` (status 0x1, block 56239960); sketchy still 402-blocked
       with no chain call. Stub remains the default for offline tests.
-- [ ] Deploy ERC-8004 registries to Fuji (`contracts/`); record addresses in `.env`; seed merchants.
-- [ ] `ReputationProvider`: web3j read of `getSummary` + Caffeine cache (30s TTL). Mark @Primary or
-      use a profile so it supersedes the stub.
-- [ ] Feedback writer: async `giveFeedback` post-settlement.
+- [x] **Deploy ERC-8004 to Fuji** ✅ (commit adb11b3). Lean compatible registries in `contracts/erc8004/`.
+      Identity `0x313b59f6…8598`, Reputation `0x0455293B…5A3a`. Seeded: good agentId 1 (rep 85),
+      sketchy agentId 2 (rep 12). Addresses in `.env`.
+- [x] **`ReputationProvider` (real, web3j)** ✅ (commit c8ea2b7). `Erc8004ReputationProvider`
+      (`erc8004.enabled=true`, @Primary): payee→agentId→`getSummary`, Caffeine 30s, fail-closed.
+      Live-verified: good (chain rep 85)→SETTLED real tx `0x41f05847…` (status 0x1); sketchy (chain
+      rep 12)→402, no settle. Both protocols real + on-chain together.
+- [ ] Feedback writer: async `giveFeedback` post-settlement (closes the loop; score ticks up in demo).
 - [ ] Reconciliation `@Scheduled` job: re-verify SETTLED/FAILED vs on-chain.
+- [ ] Move the executor network call outside the DB transaction in `TreasuryService`.
 
 ## Phase 3 — Demo polish
 - [ ] Dashboard: budget burn-down, payment feed, blocked-with-reason.
