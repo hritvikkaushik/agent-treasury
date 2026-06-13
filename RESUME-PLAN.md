@@ -8,17 +8,17 @@
 
 ## STATE (update this block every session)
 
-- **Phase:** 0 — **signing path VALIDATED end-to-end against the live facilitator.** Only blocker is
-  funding the treasury wallet with test USDC.
-- **Last completed:** Closed the Mac→Linux loop (`ssh homelinux`, builds run in Docker). Facilitator
-  running on Fuji (`docker run -d`, `/supported` confirms v1 `avalanche-fuji`). Ran the smoke test:
-  web3j signed the EIP-3009 payload, facilitator **accepted the signature** and reached the balance
-  check — `/verify` → `insufficient_funds`. So domain, v-packing, network string, envelope, fields
-  are ALL correct. Treasury `0x44bbaa…` has 0.5 AVAX but **0 USDC**.
-- **Next action:** Fund treasury `0x44bbaa5352a18ac76966bc7c817679dffbf496ad` with test USDC
-  (faucet.circle.com → Avalanche Fuji). Then re-run `./scripts/smoke.sh` → expect `/verify isValid:true`
-  and `/settle success:true` with a Snowtrace tx. That closes the Phase-0 gate.
-- **Blockers:** treasury wallet has no test USDC (manual faucet step).
+- **Phase:** 0 — **`/verify` PASSES (`isValid:true`).** One faucet step from a green settlement.
+- **Last completed:** Funded treasury with USDC (40 USDC). Re-ran smoke test: `/verify` → `isValid:true`
+  with correct payer. `/settle` failed only because the **facilitator signer wallet `0x6f40…` has 0
+  AVAX** (`insufficient funds for gas`, tx cost ~0.00034 AVAX). Everything else works.
+- **Next action:** Fund facilitator wallet `0x6f409644a8a0b598284e8ca1a7562759f2189fbf` with test
+  AVAX (Core console faucet: build.avax.network/console/primary-network/faucet). Then re-run
+  `./scripts/smoke.sh` → expect `/settle success:true` + Snowtrace tx. Closes the Phase-0 gate.
+- **Blockers:** facilitator wallet has no AVAX for gas (manual faucet step).
+
+Wallet roles recap: **treasury `0x44bbaa…`** = payer (needs USDC ✓ + a little AVAX ✓);
+**facilitator `0x6f40…`** = settlement submitter (needs AVAX ✗) and current `PAY_TO`.
 
 ---
 
