@@ -8,17 +8,18 @@
 
 ## STATE (update this block every session)
 
-- **Phase:** 1 (treasury core). Phase-0 gate passed. **Stage 1 done** (policy engine, 14 tests green);
-  **Stage 2 in progress** (persistence + ledger).
-- **Last completed:** Smoke test green: `/verify isValid:true`, `/settle success:true`. On-chain
-  receipt **status 0x1**, block 56239567, tx
-  `0x81296747cb0688c44817649d6e4de798ffa112f17bea396fcc537040b7230d95`; `PAY_TO` received exactly
-  0.01 USDC; gasless for the payer (facilitator submitted + paid gas). Signing core
-  (`Eip3009Signer`) is proven and ready to port into the treasury.
-- **Next action:** Two parallel tracks now unblocked — (a) **ERC-8004 deploy** to Fuji + seed the two
-  demo merchants (`contracts/README.md`); (b) **Phase 1 treasury core** (no chain deps). Either can
-  start.
-- **Blockers:** none.
+- **Phase:** 1 (treasury core) **COMPLETE** — Stages 1-3 done, 29 tests green, live HTTP demo verified.
+  Phase-0 gate also passed (real Fuji settlement).
+- **Last completed:** Stage 3 (proxy + orchestration). Booted the real app against Postgres and drove
+  `/proxy`: no-key→401; good merchant→200 SETTLED+txHash; sketchy (rep 12)→402
+  REPUTATION_BELOW_THRESHOLD; over-cap→402 PER_TX_CAP_EXCEEDED; idempotent replay→same intent, charged
+  once. (Phase-0 smoke test earlier: real Fuji settle, tx 0x81296747…b7230d95, status 0x1.)
+- **Next action:** **Phase 2 — chain integration.** (a) Port `Eip3009Signer` into a real
+  `PaymentExecutor` (sign → facilitator `/settle`); (b) ERC-8004: deploy registries to Fuji
+  (`contracts/`), web3j `ReputationProvider` reading `getSummary` + async feedback writer;
+  (c) reconciliation job. The two stub interfaces are the seams to swap.
+- **Blockers:** none. (x402 settle already proven; ERC-8004 deploy uses the funded treasury key on the
+  Linux box.)
 
 Wallet roles recap: **treasury `0x44bbaa…`** = payer (USDC ✓ + AVAX ✓);
 **facilitator `0x6f40…`** = settlement submitter (AVAX ✓) and current `PAY_TO`.
@@ -65,13 +66,16 @@ Wallet roles recap: **treasury `0x44bbaa…`** = payer (USDC ✓ + AVAX ✓);
   - [x] Postgres (Docker `treasury-pg`, `scripts/dev-db.sh`) + Flyway schema.
   - [x] `PaymentIntent` lifecycle + idempotency (unique key); double-entry ledger; daily-budget +
         velocity queries. 22 tests green against real Postgres.
-- **Stage 3 — proxy + orchestration** (in progress)
-  - [ ] `POST /proxy` + `X-Agent-Key` auth; `ReputationProvider` + `PaymentExecutor` interfaces with
-        stubs; `TreasuryService` orchestrator; full flow tested over HTTP. Virtual threads on.
+- **Stage 3 — proxy + orchestration** ✅ (commit f85e057)
+  - [x] `POST /proxy` + `X-Agent-Key` auth; `ReputationProvider` + `PaymentExecutor` interfaces with
+        stubs; `TreasuryService` orchestrator; 29 tests + live HTTP demo verified. Virtual threads on.
 
-## Phase 2 — Chain integration
-- [ ] Port `Eip3009Signer` from smoke-test; wire 402 → sign → `X-PAYMENT` → facilitator settle.
-- [ ] Reputation oracle: web3j read of `getSummary` + Caffeine cache (30s TTL) + tier rule.
+## Phase 2 — Chain integration (next). Swap the Stage-3 stubs for real impls.
+- [ ] `PaymentExecutor`: port `Eip3009Signer` from smoke-test; sign → facilitator `/settle` →
+      real tx hash. (Move the network call outside the DB tx — see TreasuryService note.)
+- [ ] Deploy ERC-8004 registries to Fuji (`contracts/`); record addresses in `.env`; seed merchants.
+- [ ] `ReputationProvider`: web3j read of `getSummary` + Caffeine cache (30s TTL). Mark @Primary or
+      use a profile so it supersedes the stub.
 - [ ] Feedback writer: async `giveFeedback` post-settlement.
 - [ ] Reconciliation `@Scheduled` job: re-verify SETTLED/FAILED vs on-chain.
 
@@ -97,5 +101,9 @@ Wallet roles recap: **treasury `0x44bbaa…`** = payer (USDC ✓ + AVAX ✓);
 - **2026-06-13** Closed Mac→Linux dev loop (`ssh homelinux`; Docker-only builds). Facilitator running
   on Fuji. **Phase-0 gate PASSED** — first real x402/EIP-3009 settlement on Fuji, tx
   `0x81296747…b7230d95` (status 0x1, 0.01 USDC moved, gasless for payer). Fixed several
-  `.env`/`--env-file` quoting traps and Linux GitHub auth along the way. Next: ERC-8004 deploy +
-  Phase 1 treasury core.
+  `.env`/`--env-file` quoting traps and Linux GitHub auth along the way.
+- **2026-06-13** **Phase 1 COMPLETE** (Stages 1-3). Treasury core in `treasury/`: pure policy engine,
+  Postgres+Flyway persistence, double-entry ledger, idempotent intent state machine, `/proxy` +
+  API-key auth, orchestration behind `ReputationProvider`/`PaymentExecutor` stubs. 29 tests green;
+  live HTTP demo verified (settle / reputation-block / cap-block / idempotent replay). Next: Phase 2
+  chain integration.
