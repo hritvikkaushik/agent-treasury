@@ -3,10 +3,12 @@ package tech.treasury;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.scheduling.annotation.EnableAsync;
 import tech.treasury.payment.x402.X402Properties;
 import tech.treasury.reputation.Erc8004Properties;
 
 @SpringBootApplication
+@EnableAsync
 @EnableConfigurationProperties({X402Properties.class, Erc8004Properties.class})
 public class TreasuryApplication {
 

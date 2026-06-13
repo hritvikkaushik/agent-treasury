@@ -12,6 +12,7 @@ import tech.treasury.payment.PaymentExecutor;
 import tech.treasury.policy.Decision;
 import tech.treasury.policy.PaymentContext;
 import tech.treasury.policy.PolicyEngine;
+import tech.treasury.reputation.FeedbackWriter;
 import tech.treasury.reputation.ReputationProvider;
 import tech.treasury.repo.AgentRepository;
 
@@ -34,15 +35,18 @@ public class TreasuryService {
     private final PolicyEngine policy;
     private final ReputationProvider reputation;
     private final PaymentExecutor executor;
+    private final FeedbackWriter feedbackWriter;
 
     public TreasuryService(AgentRepository agents, PaymentIntentService intents, LedgerService ledger,
-                           PolicyEngine policy, ReputationProvider reputation, PaymentExecutor executor) {
+                           PolicyEngine policy, ReputationProvider reputation, PaymentExecutor executor,
+                           FeedbackWriter feedbackWriter) {
         this.agents = agents;
         this.intents = intents;
         this.ledger = ledger;
         this.policy = policy;
         this.reputation = reputation;
         this.executor = executor;
+        this.feedbackWriter = feedbackWriter;
     }
 
     @Transactional
@@ -78,6 +82,7 @@ public class TreasuryService {
         if (exec.success()) {
             ledger.recordPayment(intent.getId(), agentId, amountAtomic, now);
             intent.markSettled(exec.txHash(), now);
+            feedbackWriter.recordSuccessfulPayment(payee); // async, best-effort: closes the reputation loop
         } else {
             intent.transitionTo(PaymentIntentState.FAILED, now);
         }

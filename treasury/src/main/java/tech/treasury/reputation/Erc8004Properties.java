@@ -8,6 +8,8 @@ public record Erc8004Properties(
         boolean enabled,
         String identityRegistry,
         String reputationRegistry,
-        String rpcUrl
+        String rpcUrl,
+        long chainId,
+        String treasuryPrivateKey
 ) {
 }

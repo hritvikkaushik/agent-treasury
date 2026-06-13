@@ -36,6 +36,8 @@ erc8004:
   identity-registry: ${IDENTITY_REGISTRY_ADDRESS:}
   reputation-registry: ${REPUTATION_REGISTRY_ADDRESS:}
   rpc-url: ${RPC_URL:https://api.avax-test.network/ext/bc/C/rpc}
+  chain-id: ${CHAIN_ID:43113}
+  treasury-private-key: ${TREASURY_PRIVATE_KEY:}
 
 server:
   port: 8090
