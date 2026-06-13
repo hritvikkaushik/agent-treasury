@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Agent Treasury</title>
+  <style>
+    :root {
+      --bg: #0d1117; --panel: #161b22; --border: #30363d; --text: #e6edf3;
+      --muted: #8b949e; --green: #3fb950; --red: #f85149; --amber: #d29922; --blue: #58a6ff;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text);
+      font: 14px/1.5 -apple-system, "Segoe UI", Roboto, sans-serif; }
+    header { padding: 18px 24px; border-bottom: 1px solid var(--border); display: flex;
+      align-items: baseline; gap: 12px; }
+    header h1 { font-size: 18px; margin: 0; }
+    header .sub { color: var(--muted); font-size: 13px; }
+    header .dot { margin-left: auto; color: var(--muted); font-size: 12px; }
+    .wrap { display: grid; grid-template-columns: 360px 1fr; gap: 20px; padding: 20px 24px; }
+    .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+    .panel h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em;
+      color: var(--muted); margin: 0 0 14px; }
+    .agent { margin-bottom: 18px; }
+    .agent .row { display: flex; justify-content: space-between; align-items: baseline; }
+    .agent .name { font-weight: 600; }
+    .agent .meta { color: var(--muted); font-size: 12px; }
+    .bar { height: 9px; background: #21262d; border-radius: 5px; overflow: hidden; margin: 7px 0 4px; }
+    .bar > div { height: 100%; background: linear-gradient(90deg, var(--green), var(--amber)); }
+    .bar.over > div { background: var(--red); }
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; color: var(--muted); font-weight: 500; font-size: 12px;
+      padding: 6px 10px; border-bottom: 1px solid var(--border); }
+    td { padding: 9px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    tr.SETTLED { border-left: 3px solid var(--green); }
+    tr.DENIED  { border-left: 3px solid var(--red); }
+    tr.FAILED  { border-left: 3px solid var(--amber); }
+    .pill { display: inline-block; padding: 1px 8px; border-radius: 20px; font-size: 11px;
+      font-weight: 600; }
+    .pill.SETTLED { background: rgba(63,185,80,.15); color: var(--green); }
+    .pill.DENIED  { background: rgba(248,81,73,.15); color: var(--red); }
+    .pill.FAILED  { background: rgba(210,153,34,.15); color: var(--amber); }
+    .reason { color: var(--red); font-size: 12px; }
+    .mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px; }
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .muted { color: var(--muted); }
+    .empty { color: var(--muted); padding: 20px 10px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Agent Treasury</h1>
+    <span class="sub">guardrails for autonomous agent payments · Avalanche Fuji</span>
+    <span class="dot" id="status">connecting…</span>
+  </header>
+  <div class="wrap">
+    <div class="panel">
+      <h2>Agents · daily budget</h2>
+      <div id="agents"></div>
+    </div>
+    <div class="panel">
+      <h2>Payment feed</h2>
+      <table>
+        <thead><tr><th>Time</th><th>Agent</th><th>Payee</th><th>Amount</th><th>Outcome</th></tr></thead>
+        <tbody id="feed"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    const usdc = (atomic) => (Number(atomic) / 1e6).toFixed(2);
+    const short = (s) => s ? s.slice(0, 6) + "…" + s.slice(-4) : "";
+    const time = (iso) => { try { return new Date(iso).toLocaleTimeString(); } catch { return iso; } };
+
+    function renderAgents(agents) {
+      document.getElementById("agents").innerHTML = agents.map(a => {
+        const pct = a.dailyBudgetAtomic ? Math.min(100, 100 * a.spentTodayAtomic / a.dailyBudgetAtomic) : 0;
+        const over = pct >= 100;
+        return `<div class="agent">
+          <div class="row"><span class="name">${a.name}</span>
+            <span class="meta">$${usdc(a.spentTodayAtomic)} / $${usdc(a.dailyBudgetAtomic)}</span></div>
+          <div class="bar ${over ? "over" : ""}"><div style="width:${pct}%"></div></div>
+          <div class="meta">cap $${usdc(a.perTxCapAtomic)} · ${a.velocityPerMinute}/min · min reputation ${a.minReputation}</div>
+        </div>`;
+      }).join("") || '<div class="empty">no agents</div>';
+    }
+
+    function renderFeed(payments) {
+      const body = document.getElementById("feed");
+      if (!payments.length) { body.innerHTML = '<tr><td colspan="5" class="empty">no payments yet</td></tr>'; return; }
+      body.innerHTML = payments.map(p => {
+        let outcome;
+        if (p.state === "SETTLED") {
+          const tx = (p.txHash && p.txHash.length === 66)
+            ? `<a href="https://testnet.snowtrace.io/tx/${p.txHash}" target="_blank" class="mono">${short(p.txHash)}</a>`
+            : `<span class="mono muted">${short(p.txHash || "")}</span>`;
+          outcome = `<span class="pill SETTLED">SETTLED</span> ${tx}`;
+        } else if (p.state === "DENIED") {
+          outcome = `<span class="pill DENIED">DENIED</span><div class="reason">${p.denialReason}: ${p.denialDetail || ""}</div>`;
+        } else if (p.state === "FAILED") {
+          outcome = `<span class="pill FAILED">FAILED</span>`;
+        } else {
+          outcome = `<span class="muted">${p.state}</span>`;
+        }
+        return `<tr class="${p.state}">
+          <td class="muted">${time(p.createdAt)}</td>
+          <td>${p.agentId}</td>
+          <td class="mono">${short(p.payee)}</td>
+          <td>$${usdc(p.amountAtomic)}</td>
+          <td>${outcome}</td></tr>`;
+      }).join("");
+    }
+
+    async function tick() {
+      try {
+        const [agents, payments] = await Promise.all([
+          fetch("/api/dashboard/agents").then(r => r.json()),
+          fetch("/api/dashboard/payments").then(r => r.json()),
+        ]);
+        renderAgents(agents);
+        renderFeed(payments);
+        document.getElementById("status").textContent = "● live";
+        document.getElementById("status").style.color = "var(--green)";
+      } catch (e) {
+        document.getElementById("status").textContent = "● disconnected";
+        document.getElementById("status").style.color = "var(--red)";
+      }
+    }
+
+    tick();
+    setInterval(tick, 2000);
+  </script>
+</body>
+</html>

@@ -122,4 +122,8 @@ public class PaymentIntent {
     public String getTxHash() {
         return txHash;
     }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
 }
