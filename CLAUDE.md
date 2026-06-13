@@ -37,5 +37,8 @@ ERC-8004 counterparty reputation) before the treasury signs and settles. Full mo
 - The smoke-test `Eip3009Signer` is meant to port directly into the treasury later — keep it clean.
 
 ## Environment prerequisites
-Java 21, Maven 3.9+, Node 20+ (for the Hardhat contract deploy), Docker (Linux — for the facilitator),
-git. A funded Fuji wallet (test AVAX + test USDC) is needed for the live Phase-0 steps.
+The **Linux runtime box (`homelinux`) has only Docker** — no Java/Maven/Node. So **builds run in
+containers**, not on the host: the smoke test uses a `maven:3.9-eclipse-temurin-21` image
+(`scripts/smoke.sh`), the facilitator is a container (`infra/facilitator/docker-compose.yml`), and the
+ERC-8004 deploy should use a `node` image. Keep this Docker-only pattern for anything new.
+A funded Fuji wallet (test AVAX + test USDC) is needed for the live Phase-0 steps.
