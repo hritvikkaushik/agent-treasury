@@ -1,0 +1,11 @@
+{
+  "name": "erc8004-fuji",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Minimal ERC-8004-compatible registries for Agent Treasury (Avalanche Fuji)",
+  "devDependencies": {
+    "hardhat": "^2.22.0",
+    "@nomicfoundation/hardhat-ethers": "^3.0.5",
+    "ethers": "^6.13.0"
+  }
+}

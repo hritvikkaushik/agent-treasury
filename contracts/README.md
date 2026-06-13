@@ -1,52 +1,42 @@
-# ERC-8004 registries — deploy to Avalanche Fuji
+# ERC-8004 registries — Avalanche Fuji
 
-We deploy the reference Identity + Reputation registries ourselves (they're not on Fuji officially).
-Verified facts (toolchain, signatures, deploy flow) are in `SPIKE-FINDINGS.md` §4.
+The treasury needs two on-chain capabilities: **read** a counterparty's reputation (`getSummary`) and
+**write** feedback after a payment (`giveFeedback`). Rather than deploy the full reference
+implementation (Hardhat v3 + UUPS proxies + CREATE2 vanity addresses — heavy and fragile for a
+sprint), we deploy **lean ERC-8004-*compatible* registries** in `erc8004/` that implement the same
+verified signatures (`register`, `giveFeedback`, `getSummary`). See `SPIKE-FINDINGS.md` §4 for the
+reference signatures we match. The full reference repo is https://github.com/erc-8004/erc-8004-contracts.
 
-> We **don't vendor** the contracts repo here — clone it alongside and deploy from there, recording the
-> resulting addresses back into this project's `.env`. (Keeping their git history out of ours.)
-
-## Steps
-```bash
-# 1. Clone the reference contracts (CC0)
-git clone https://github.com/erc-8004/erc-8004-contracts.git
-cd erc-8004-contracts
-npm install     # Hardhat v3, Solidity 0.8.24, OpenZeppelin upgradeable ^5.4.0
-
-# 2. Configure Fuji (the repo already defines the `avalancheFuji` network)
-export AVALANCHE_FUJI_RPC_URL=https://api.avax-test.network/ext/bc/C/rpc
-export AVALANCHE_FUJI_PRIVATE_KEY=0x<your treasury key, funded with test AVAX>
-
-# 3. Deploy. Canonical path (shared 0x8004… vanity address via CREATE2):
-npx hardhat run scripts/deploy-vanity.ts --network avalancheFuji
-#   Read VANITY_DEPLOYMENT_GUIDE.md first — needs a funded CREATE2 factory on Fuji.
-#   SIMPLER alternative if the vanity path is fiddly: deploy plain UUPS proxies via
-#   ignition/modules/ERC8004.ts, or a small ethers script. Canonical address is NOT required for us.
+## What's here
+```
+erc8004/
+  contracts/IdentityRegistry.sol     # register(uri) / registerFor(wallet,uri); agentIdOf, getAgentWallet
+  contracts/ReputationRegistry.sol   # giveFeedback(...); getSummary(...) -> (count, avg, decimals)
+  scripts/deploy.js                  # deploy both + register the 2 demo merchants + seed reputation
+  hardhat.config.js                  # Fuji (chainId 43113); reads RPC_URL + TREASURY_PRIVATE_KEY
 ```
 
-## Deploy order matters
-Identity **first**, then Reputation (its initializer takes the Identity address):
-- `IdentityRegistry.initialize()` — no args (owner = deployer).
-- `ReputationRegistry.initialize(identityRegistryAddress)`.
+Convention: feedback is given as a 0-100 integer with `valueDecimals = 0`, so `getSummary` returns the
+average directly as a 0-100 score. `count == 0` (no feedback) → unknown → the policy denies.
 
-Record the proxy addresses into `../.env`:
+## Deploy to Fuji (Docker; host needs only Docker)
+The deployer is the treasury wallet (`TREASURY_PRIVATE_KEY`), which holds test AVAX for gas. From the
+repo root:
+```bash
+docker run --rm --env-file .env \
+  -v "$PWD/contracts/erc8004":/app -w /app \
+  -v "$HOME/.npm":/root/.npm \
+  node:20 bash -lc "npm install --no-audit --no-fund && npx hardhat run scripts/deploy.js --network fuji"
+```
+Copy the printed addresses into the repo-root `.env`:
 ```
 IDENTITY_REGISTRY_ADDRESS=0x...
 REPUTATION_REGISTRY_ADDRESS=0x...
 ```
 
-## Seed the demo agents (after deploy)
-Register two merchant agents and seed reputation so the demo's reputation gate is real:
-- `good-data-co`: `register(agentURI)`, then several `giveFeedback(agentId, 85, 0, …)` (value 85, decimals 0).
-- `sketchy-data-inc`: `register(...)`, then `giveFeedback(agentId, 12, 0, …)`.
+## Demo agents seeded by the deploy
+- `good-data-co`  = `0x6f40…fbf` — feedback [90,85,80,85] → reputation ~85
+- `sketchy-data-inc` = `0x0000…dEaD` — feedback [10,15,12] → reputation ~12
 
-Reputation read for the policy gate: `getSummary(agentId, [], "", "")` → `(count, summaryValue, decimals)`;
-score = `summaryValue / 10^decimals` (with our `decimals=0` convention this is just the average); treat
-`count==0` as unknown → deny. See `SPIKE-FINDINGS.md` §4 for the exact signatures.
-
-## web3j wrappers (for the treasury, Phase 2)
-`register` is overloaded — generate Java wrappers from the JSON ABIs in the contracts repo's `/abis`
-(not from Solidity) so selectors are correct:
-```bash
-web3j generate solidity -a <IdentityRegistry.json> -o <out> -p tech.treasury.chain.erc8004
-```
+The treasury's web3j `ReputationProvider` (Phase 2b) maps payee address → agentId
+(`IdentityRegistry.agentIdOf`) → `getSummary` → 0-100 score.
