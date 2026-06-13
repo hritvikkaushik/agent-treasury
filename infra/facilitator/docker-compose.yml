@@ -1,0 +1,16 @@
+# Runs the x402.rs facilitator detached, on Fuji. From this directory:
+#   docker compose up -d        # start in background
+#   docker compose logs -f      # follow logs
+#   docker compose down         # stop
+# Reads FACILITATOR_PRIVATE_KEY from the repo-root .env (must be funded with test AVAX).
+services:
+  facilitator:
+    image: ghcr.io/x402-rs/x402-facilitator
+    container_name: x402-facilitator
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./config.json:/app/config.json:ro
+    env_file:
+      - ../../.env

@@ -8,16 +8,15 @@
 
 ## STATE (update this block every session)
 
-- **Phase:** 0 (Spikes / foundation) — reconnaissance done, live execution pending.
-- **Last completed:** Wrote Phase-0 smoke-test bundle (`smoke-test/`), facilitator config
-  (`infra/facilitator/`), ERC-8004 deploy notes (`contracts/`), repo scaffolding (git, .gitignore,
-  .env.example, CLAUDE.md, README, .claude template). Resolved all design unknowns (see SPIKE-FINDINGS).
-- **Next action:** On the Linux box — fund wallets from faucets, run the x402.rs facilitator against
-  Fuji, then run the smoke test (`cd smoke-test && mvn -q compile exec:java`) and confirm a real
-  settlement tx on Snowtrace. This validates the EIP-712 signing path before any treasury code.
-- **Blockers:** Live steps need a funded Fuji wallet (faucet captcha = manual) and Docker (Linux).
-  The smoke-test Java code has **not been compiled/run yet** (no Fuji wallet in this environment) —
-  first run may surface a web3j version bump or a `network`-string tweak (see Known-risk knobs below).
+- **Phase:** 0 (Spikes / foundation) — facilitator confirmed running on Fuji; smoke test pending.
+- **Last completed:** Repo scaffolded + pushed to origin. Wallets funded (Linux). **x402.rs
+  facilitator running on Fuji** (signer `0x6f40…`, both scheme handlers registered for
+  `eip155:43113`, server up on :8080). Added `docker compose` + `scripts/smoke.sh` for one-command runs.
+- **Next action:** On the Linux box — `curl localhost:8080/supported` to confirm Fuji, then
+  `./scripts/smoke.sh` and check for a settlement tx on Snowtrace. This validates the EIP-712 signing
+  path before any treasury code.
+- **Blockers:** smoke-test Java still **un-run** (Mac can't reach public Maven — internal mirror only;
+  first real run is on Linux). Watch the Known-risk knobs below (web3j version, `network` string).
 
 ---
 
@@ -34,9 +33,9 @@
 ### To do (live — needs funded wallet; see `SPIKE-FINDINGS.md` §6)
 - [ ] **Wallets:** create 2 throwaway keys → `.env` (`TREASURY_PRIVATE_KEY`, `FACILITATOR_PRIVATE_KEY`),
       set `PAY_TO`. Fund treasury with test USDC + AVAX; facilitator with AVAX.
-- [ ] **Facilitator:** run x402.rs against Fuji (`infra/facilitator/README.md`); `GET /supported`
-      shows `eip155:43113`.
-- [ ] **Smoke test:** `cd smoke-test && mvn -q compile exec:java`. Expect `/verify` → `isValid:true`,
+- [x] **Facilitator:** running on Fuji via `docker compose up -d` (`infra/facilitator/`). Confirm with
+      `curl localhost:8080/supported` (shows `eip155:43113`).
+- [ ] **Smoke test:** `./scripts/smoke.sh` (or `cd smoke-test && mvn -q compile exec:java`). Expect `/verify` → `isValid:true`,
       `/settle` → `success:true` + a tx hash. Confirm on `https://testnet.snowtrace.io`.
       → **This is the go/no-go gate for the whole approach.**
 - [ ] **ERC-8004 deploy:** deploy Identity + Reputation registries to Fuji (`contracts/README.md`).
