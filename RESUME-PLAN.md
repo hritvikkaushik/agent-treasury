@@ -10,14 +10,14 @@
 
 - **Phase:** 2 (chain integration). Phase 1 complete (31 tests). **Real x402 settlement AND real
   ERC-8004 reputation both done + live-verified together.**
-- **Last completed:** ERC-8004 deployed to Fuji (Identity `0x313b59f6…8598`, Reputation
-  `0x0455293B…5A3a`; merchants seeded good=85/sketchy=12). web3j `Erc8004ReputationProvider` wired.
-  Live run with x402+erc8004 both on: good (chain rep 85)→SETTLED real tx `0x41f05847…` (status 0x1,
-  block 56240127); sketchy (chain rep 12)→402 no settle. 31 offline tests still green.
-- **Next action:** (a) async `giveFeedback` writer post-settlement (reputation loop closes; great demo
-  beat); (b) reconciliation `@Scheduled` job; (c) move executor network call outside the DB tx.
-  Then a thin dashboard for the demo (DESIGN §4.6).
-- **Blockers:** none.
+- **Last completed:** Async ERC-8004 feedback writer. **Full reputation loop live-verified**: agent
+  pays good-data-co 2× → real x402 settles → treasury writes on-chain feedback → reputation rose
+  85→90 (txs `0x90e48e8d…`, `0x6ce73dea…`). Both protocols real, no human in the loop. 33 offline
+  tests green. (Earlier this phase: ERC-8004 deployed; real settlement + reputation gating verified.)
+- **Next action:** (a) thin **dashboard** for the demo (budget burn-down, payment feed,
+  blocked-with-reason — DESIGN §4.6, highest demo value); (b) reconciliation `@Scheduled` job;
+  (c) move executor network call outside the DB tx.
+- **Blockers:** none. Core agentic-payments loop (x402 + ERC-8004) is complete and demoable.
 
 Wallet roles recap: **treasury `0x44bbaa…`** = payer (USDC ✓ + AVAX ✓);
 **facilitator `0x6f40…`** = settlement submitter (AVAX ✓) and current `PAY_TO`.
@@ -80,7 +80,9 @@ Wallet roles recap: **treasury `0x44bbaa…`** = payer (USDC ✓ + AVAX ✓);
       (`erc8004.enabled=true`, @Primary): payee→agentId→`getSummary`, Caffeine 30s, fail-closed.
       Live-verified: good (chain rep 85)→SETTLED real tx `0x41f05847…` (status 0x1); sketchy (chain
       rep 12)→402, no settle. Both protocols real + on-chain together.
-- [ ] Feedback writer: async `giveFeedback` post-settlement (closes the loop; score ticks up in demo).
+- [x] **Feedback writer (async)** ✅ (commit 36cadd1). `Erc8004FeedbackWriter` (@Async, @Primary):
+      signs `giveFeedback(100)` for the payee post-settlement. Live-verified loop: paying good-data-co
+      2× raised its on-chain reputation 85→90 (txs `0x90e48e8d…`, `0x6ce73dea…`); sketchy unchanged.
 - [ ] Reconciliation `@Scheduled` job: re-verify SETTLED/FAILED vs on-chain.
 - [ ] Move the executor network call outside the DB transaction in `TreasuryService`.
 
