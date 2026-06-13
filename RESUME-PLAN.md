@@ -61,13 +61,13 @@ Wallet roles recap: **treasury `0x44bbaa…`** = payer (USDC ✓ + AVAX ✓);
   - [x] Spring Boot 3.3.5 / Java 21 project; `PaymentIntentState` with enforced transitions.
   - [x] Pure `PolicyEngine` (allowlist, reputation floor + tier scaling, per-tx cap, daily budget,
         velocity; deny-by-default, ordered). 14 tests green.
-- **Stage 2 — persistence + ledger + state machine** (in progress)
-  - [ ] Postgres (Docker `treasury-pg`) + Flyway schema (agents, payment_intent, journal_entry).
-  - [ ] `PaymentIntent` lifecycle with idempotency (unique key); double-entry ledger; daily-budget
-        + velocity queries. Integration-tested against real Postgres.
-- **Stage 3 — proxy + orchestration**
+- **Stage 2 — persistence + ledger + state machine** ✅ (commit 36414d6)
+  - [x] Postgres (Docker `treasury-pg`, `scripts/dev-db.sh`) + Flyway schema.
+  - [x] `PaymentIntent` lifecycle + idempotency (unique key); double-entry ledger; daily-budget +
+        velocity queries. 22 tests green against real Postgres.
+- **Stage 3 — proxy + orchestration** (in progress)
   - [ ] `POST /proxy` + `X-Agent-Key` auth; `ReputationProvider` + `PaymentExecutor` interfaces with
-        stubs; full flow tested over HTTP. (Virtual threads on the proxy.)
+        stubs; `TreasuryService` orchestrator; full flow tested over HTTP. Virtual threads on.
 
 ## Phase 2 — Chain integration
 - [ ] Port `Eip3009Signer` from smoke-test; wire 402 → sign → `X-PAYMENT` → facilitator settle.
