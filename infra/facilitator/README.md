@@ -19,8 +19,7 @@ docker run -d --name x402-facilitator --restart unless-stopped \
 docker logs -f x402-facilitator     # follow logs
 docker rm -f x402-facilitator       # stop + remove
 ```
-(`docker compose` plugin isn't installed on the runtime box, so we use plain `docker run`. The
-`docker-compose.yml` here is kept as an optional convenience if you install the plugin.)
+(We use plain `docker run` — the `docker compose` plugin isn't installed on the runtime box.)
 
 ## Verify it's up and on Fuji
 ```bash
