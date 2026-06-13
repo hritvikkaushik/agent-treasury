@@ -1,0 +1,32 @@
+# Secrets / local env — NEVER commit private keys
+.env
+.env.local
+*.key
+**/secrets/
+
+# Java / Maven
+target/
+*.class
+
+# Node / Hardhat (contracts/)
+node_modules/
+artifacts/
+cache/
+typechain-types/
+coverage/
+.openzeppelin/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.settings/
+.project
+.classpath
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

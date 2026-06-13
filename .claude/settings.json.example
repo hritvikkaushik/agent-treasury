@@ -1,0 +1,22 @@
+{
+  "_comment": "Recommended project permissions for Agent Treasury. Copy to .claude/settings.json to activate: cp .claude/settings.json.example .claude/settings.json . These pre-approve common build/dev commands so the agent isn't prompted repeatedly. Review before enabling.",
+  "permissions": {
+    "allow": [
+      "Bash(mvn:*)",
+      "Bash(./mvnw:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git show:*)",
+      "Bash(docker:*)",
+      "Bash(docker compose:*)",
+      "Bash(npm:*)",
+      "Bash(npx:*)",
+      "Bash(node:*)",
+      "Bash(curl:*)"
+    ],
+    "deny": []
+  }
+}
