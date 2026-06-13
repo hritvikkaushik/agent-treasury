@@ -7,13 +7,15 @@
 
 **Hackathon:** Speedrun: Agentic Payments (Team1 India)
 **Author:** Harsh
-**Status:** Design — spikes complete, pre-build
+**Status:** Implemented & verified on Avalanche Fuji (demo-ready)
 **Last updated:** 2026-06-13
 
-> **Phase-0 reconnaissance is done — see [`SPIKE-FINDINGS.md`](./SPIKE-FINDINGS.md) for the verified
-> facts (addresses, ABIs, wire formats, config). Headline change: Mogami is dropped (no Avalanche
-> support); we use the x402.rs facilitator + sign EIP-3009 ourselves with web3j.** Sections below are
-> updated to match.
+> **This is the original design doc + rationale (kept for the "why").** For the *as-built*
+> documentation see **[`docs/`](./docs/)**: [HLD](./docs/HLD.md) · [ARCHITECTURE](./docs/ARCHITECTURE.md)
+> · [LLD](./docs/LLD.md) · [FLOWS](./docs/FLOWS.md) · [USAGE](./docs/USAGE.md) ·
+> [USER-GUIDE](./docs/USER-GUIDE.md). Verified on-chain facts: [`SPIKE-FINDINGS.md`](./SPIKE-FINDINGS.md).
+> Headline build choices: Mogami dropped (no Avalanche); x402.rs facilitator + web3j EIP-3009 signing;
+> lean ERC-8004-compatible registries.
 
 ---
 

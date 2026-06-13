@@ -1,64 +1,69 @@
 # Agent Treasury
 
-> The CFO for your AI agents. Agents get spending **authority, not private keys** — every x402
-> payment routes through a policy engine (budgets, velocity, merchant allowlist, on-chain reputation)
-> before the treasury signs and settles on **Avalanche Fuji**.
+> The control plane for autonomous agent payments. Agents get spending **authority, not private
+> keys** — every payment routes through a policy engine (budgets, velocity, merchant allowlist,
+> on-chain reputation) before the treasury signs and settles on **Avalanche Fuji**.
 
 Built for the *Speedrun: Agentic Payments* hackathon. Combines **x402** (HTTP-native stablecoin
-payments) with **ERC-8004** (on-chain agent identity + reputation).
+payments) with **ERC-8004** (on-chain agent identity + reputation). An autonomous agent pays real USDC,
+gated by on-chain reputation and spend policy — no human in the loop.
 
-- **Design & rationale:** [`DESIGN.md`](./DESIGN.md)
-- **Verified build facts** (addresses, ABIs, wire formats): [`SPIKE-FINDINGS.md`](./SPIKE-FINDINGS.md)
-- **Live plan & progress:** [`RESUME-PLAN.md`](./RESUME-PLAN.md)
+## Documentation
+| Doc | What |
+|-----|------|
+| [docs/HLD.md](./docs/HLD.md) | High-level design — problem, components, decisions |
+| [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | Modules, interface seams, data model, topology |
+| [docs/LLD.md](./docs/LLD.md) | Low-level — classes, algorithms, schema |
+| [docs/FLOWS.md](./docs/FLOWS.md) | Runtime sequences (payment, denial, reputation, reconciliation) |
+| [docs/USAGE.md](./docs/USAGE.md) | Build/run/config, env reference, HTTP API |
+| [docs/USER-GUIDE.md](./docs/USER-GUIDE.md) | For agent developers — how to pay, outcomes, limits |
+| [DESIGN.md](./DESIGN.md) | Original design doc & rationale + résumé bullets |
+| [DEMO.md](./DEMO.md) | Live demo script |
+| [SPIKE-FINDINGS.md](./SPIKE-FINDINGS.md) | Verified on-chain facts (addresses, ABIs, wire formats) |
+| [RESUME-PLAN.md](./RESUME-PLAN.md) | Live status + plan (source of truth for progress) |
 
 ## Repository layout
 ```
 .
-├── DESIGN.md              # architecture, components, demo script
-├── SPIKE-FINDINGS.md      # verified facts — ground truth for all on-chain values
-├── RESUME-PLAN.md         # live status + step-by-step plan (keep updated)
-├── CLAUDE.md              # orientation for AI agents
-├── .env.example           # config template (copy to .env; never commit .env)
-├── .claude/
-│   └── settings.json.example   # recommended permissions (copy to settings.json to enable)
+├── docs/                  # HLD, LLD, ARCHITECTURE, FLOWS, USAGE, USER-GUIDE
+├── treasury/              # Spring Boot app (Java 21): policy, ledger, intents, proxy, dashboard
+├── contracts/erc8004/     # lean ERC-8004-compatible registries + Hardhat deploy/read scripts
 ├── smoke-test/            # Phase-0: web3j EIP-3009 signing → facilitator verify/settle
 ├── infra/facilitator/     # x402.rs facilitator config for Fuji
-└── contracts/             # ERC-8004 deploy-to-Fuji notes
-    (treasury Spring Boot app — added in Phase 1)
+├── scripts/               # dev-db.sh, treasury-mvn.sh, smoke.sh
+├── DESIGN.md SPIKE-FINDINGS.md RESUME-PLAN.md DEMO.md CLAUDE.md
+└── .env.example           # config template (copy to .env; never commit .env)
 ```
 
 ## Prerequisites
 | Tool | Version | For |
 |------|---------|-----|
-| Java | 21 | treasury + smoke-test |
-| Maven | 3.9+ | build |
-| Node | 20+ | ERC-8004 Hardhat deploy |
-| Docker | any recent | x402.rs facilitator (Linux) |
+| Docker | recent | facilitator, Postgres, and containerized builds |
+| Node | 20+ | only for the ERC-8004 deploy (or run it in Docker) |
+| Java + Maven | 21 / 3.9 | only if building on the host instead of via Docker |
 | git | any | — |
 
-Plus a **funded Fuji wallet**: test AVAX ([Core console faucet](https://build.avax.network/console/primary-network/faucet))
-and test USDC ([Circle faucet](https://faucet.circle.com/), select Avalanche Fuji).
+Plus a **funded Fuji wallet** for on-chain mode: test AVAX
+([Core console faucet](https://build.avax.network/console/primary-network/faucet)) and test USDC
+([Circle faucet](https://faucet.circle.com/), select Avalanche Fuji).
 
 ## Quick start
 ```bash
-# 1. Config
-cp .env.example .env            # fill in throwaway testnet keys + PAY_TO
-cp .claude/settings.json.example .claude/settings.json   # optional: pre-approve dev commands
+cp .env.example .env                 # fill throwaway testnet keys + addresses
+./scripts/dev-db.sh up               # Postgres (+ treasury_test for tests)
+./scripts/treasury-mvn.sh -q test    # 38 tests, offline
 
-# 2. Run the x402.rs facilitator against Fuji (Linux/Docker) — see infra/facilitator/README.md
-docker run -d --name x402-facilitator --restart unless-stopped \
-  -v "$(pwd)/infra/facilitator/config.json:/app/config.json:ro" \
-  --env-file .env -p 8080:8080 ghcr.io/x402-rs/x402-facilitator
-curl -s localhost:8080/supported   # confirm eip155:43113
-
-# 3. Smoke test: sign one EIP-3009 payment and push it through the facilitator
-#    Runs in a Maven+JDK21 container (host needs only Docker). Do NOT `source .env`.
-./scripts/smoke.sh
-# -> prints signature, X-PAYMENT header, /verify result, /settle tx hash (Snowtrace link)
+# Run the app (offline/stub mode — no chain, no funds):
+docker run -d --name treasury-app --network host --env-file .env \
+  -v "$PWD/treasury":/app -w /app -v "$HOME/.m2":/root/.m2 \
+  maven:3.9-eclipse-temurin-21 mvn -q spring-boot:run
+# Dashboard: http://localhost:8090/   ·   add -e X402_ENABLED=true -e ERC8004_ENABLED=true for real chain
 ```
-
-See [`RESUME-PLAN.md`](./RESUME-PLAN.md) for the full Phase-0 checklist and what comes next.
+Full instructions: [docs/USAGE.md](./docs/USAGE.md). Demo: [DEMO.md](./DEMO.md).
 
 ## Status
-Phase-0 reconnaissance complete; smoke-test bundle written. Live execution (faucets, facilitator run,
-ERC-8004 deploy, settle) pending — tracked in `RESUME-PLAN.md`. Treasury app not yet started.
+**Complete and demo-ready.** Core agentic-payments loop verified end-to-end on Avalanche Fuji: x402
+USDC settlement gated by ERC-8004 reputation + spend policy, with a feedback loop that raises a
+merchant's on-chain reputation, a live dashboard, idempotent double-entry ledger, and scheduled
+reconciliation. 38 tests green (offline). Remaining items are optional polish — see
+[RESUME-PLAN.md](./RESUME-PLAN.md).

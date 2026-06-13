@@ -5,6 +5,10 @@
 *.key
 **/secrets/
 
+# Private / personal notes — never commit
+*.private.md
+DEMO-GUIDE.private.md
+
 # Java / Maven
 target/
 *.class

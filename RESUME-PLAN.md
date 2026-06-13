@@ -3,6 +3,8 @@
 > **Purpose:** this is the live state machine for the project. An agent (or human) picking up the work
 > should read this top-to-bottom, do the **Next action**, and then **update the STATE block + Progress
 > log** below before stopping. Treat checkboxes as authoritative.
+>
+> As-built design docs: [`docs/`](./docs/) (HLD, ARCHITECTURE, LLD, FLOWS, USAGE, USER-GUIDE).
 
 ---
 

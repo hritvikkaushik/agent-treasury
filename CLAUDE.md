@@ -14,12 +14,18 @@ ERC-8004 counterparty reputation) before the treasury signs and settles. Full mo
 | File | Purpose |
 |------|---------|
 | `RESUME-PLAN.md` | **Live state + step-by-step plan. Start here. Update as you go.** |
-| `DESIGN.md` | The design doc — architecture, components, demo script, resume framing. |
+| `docs/HLD.md`, `docs/ARCHITECTURE.md`, `docs/LLD.md` | Design at three altitudes |
+| `docs/FLOWS.md` | Runtime sequences (payment, denial, reputation, feedback, reconciliation) |
+| `docs/USAGE.md` | Build/run/config + HTTP API reference |
+| `docs/USER-GUIDE.md` | For agent developers using the treasury |
+| `DESIGN.md` | Original design doc & rationale + résumé bullets. |
 | `SPIKE-FINDINGS.md` | Verified facts: addresses, ABIs, x402 wire formats, configs. **Ground truth for values.** |
-| `README.md` | Human setup / how-to-run. |
+| `DEMO.md` | Live demo script (committed). *(A private `DEMO-GUIDE.private.md` is gitignored.)* |
+| `README.md` | Human setup / how-to-run + doc index. |
+| `treasury/` | The Spring Boot app (policy, ledger, intents, proxy, dashboard, chain integration). |
 | `smoke-test/` | Phase-0 Java/web3j harness: sign EIP-3009 → facilitator `/verify` → `/settle`. |
 | `infra/facilitator/` | x402.rs facilitator config for Fuji + run notes. |
-| `contracts/` | ERC-8004 deploy-to-Fuji notes. |
+| `contracts/erc8004/` | Lean ERC-8004-compatible registries + Hardhat deploy/read scripts. |
 
 ## Key locked decisions (do not re-litigate — see SPIKE-FINDINGS.md)
 - Chain: **Avalanche Fuji** (chainId 43113). EVM.

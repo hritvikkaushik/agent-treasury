@@ -1,8 +1,13 @@
 # Spike Findings — verified facts for the build
 
 > Reconnaissance completed 2026-06-13. Every fact below is sourced from primary docs or source code
-> (cited inline). The **live-execution** steps (faucet funding, contract deploy, end-to-end settle)
-> still require an interactive wallet — see §6. This doc is the build reference; `DESIGN.md` is the plan.
+> (cited inline). This doc is the verified-facts reference; for as-built design see [`docs/`](./docs/).
+>
+> **As-built deviations from the recon:** (1) ERC-8004 — instead of the UUPS/vanity reference deploy,
+> we shipped **lean compatible registries** (`contracts/erc8004/`) with the same `register`/
+> `giveFeedback`/`getSummary` signatures; deployed on Fuji at Identity `0x313b59f6…8598`, Reputation
+> `0x0455293B…5A3a`. (2) Everything else below matched and was used as-is (USDC address, EIP-712
+> domain, x402 v1 wire format, facilitator config).
 
 ---
 
