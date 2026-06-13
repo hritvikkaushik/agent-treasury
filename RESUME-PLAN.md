@@ -8,7 +8,8 @@
 
 ## STATE (update this block every session)
 
-- **Phase:** 0 — **GATE PASSED.** Full x402/EIP-3009 settlement works end-to-end on Fuji.
+- **Phase:** 1 (treasury core). Phase-0 gate passed. **Stage 1 done** (policy engine, 14 tests green);
+  **Stage 2 in progress** (persistence + ledger).
 - **Last completed:** Smoke test green: `/verify isValid:true`, `/settle success:true`. On-chain
   receipt **status 0x1**, block 56239567, tx
   `0x81296747cb0688c44817649d6e4de798ffa112f17bea396fcc537040b7230d95`; `PAY_TO` received exactly
@@ -55,14 +56,18 @@ Wallet roles recap: **treasury `0x44bbaa…`** = payer (USDC ✓ + AVAX ✓);
 
 ---
 
-## Phase 1 — Treasury core (no chain; build in parallel with Phase-0 live steps)
-- [ ] Spring Boot 3 / Java 21 skeleton (Maven), Postgres, Flyway. Seed agents + policies.
-- [ ] Proxy endpoint (`POST /proxy`) + `X-Agent-Key` auth. Virtual threads.
-- [ ] `PaymentIntent` state machine (`REQUESTED→APPROVED→SIGNED→SETTLED` / `DENIED` / `FAILED`) with
-      idempotency key (unique constraint).
-- [ ] Policy engine as a pure function `evaluate(intent, policy, reputation) → Decision`. Unit tests:
-      per-tx cap, daily budget, allowlist, velocity, reputation tier.
-- [ ] Double-entry ledger + daily-budget computation.
+## Phase 1 — Treasury core (no chain). Built in `treasury/`; tests run via `scripts/treasury-mvn.sh`.
+- **Stage 1 — skeleton + policy engine** ✅ (commit d281137)
+  - [x] Spring Boot 3.3.5 / Java 21 project; `PaymentIntentState` with enforced transitions.
+  - [x] Pure `PolicyEngine` (allowlist, reputation floor + tier scaling, per-tx cap, daily budget,
+        velocity; deny-by-default, ordered). 14 tests green.
+- **Stage 2 — persistence + ledger + state machine** (in progress)
+  - [ ] Postgres (Docker `treasury-pg`) + Flyway schema (agents, payment_intent, journal_entry).
+  - [ ] `PaymentIntent` lifecycle with idempotency (unique key); double-entry ledger; daily-budget
+        + velocity queries. Integration-tested against real Postgres.
+- **Stage 3 — proxy + orchestration**
+  - [ ] `POST /proxy` + `X-Agent-Key` auth; `ReputationProvider` + `PaymentExecutor` interfaces with
+        stubs; full flow tested over HTTP. (Virtual threads on the proxy.)
 
 ## Phase 2 — Chain integration
 - [ ] Port `Eip3009Signer` from smoke-test; wire 402 → sign → `X-PAYMENT` → facilitator settle.
