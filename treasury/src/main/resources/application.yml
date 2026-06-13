@@ -1,0 +1,8 @@
+spring:
+  application:
+    name: agent-treasury
+
+server:
+  port: 8090
+
+# Stage 1 has no datasource. Postgres + Flyway are added in Stage 2.
