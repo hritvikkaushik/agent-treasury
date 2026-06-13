@@ -39,6 +39,10 @@ erc8004:
   chain-id: ${CHAIN_ID:43113}
   treasury-private-key: ${TREASURY_PRIVATE_KEY:}
 
+reconciliation:
+  initial-delay-ms: ${RECONCILIATION_INITIAL_DELAY_MS:30000}
+  interval-ms: ${RECONCILIATION_INTERVAL_MS:60000}
+
 server:
   port: 8090
   # Serve the proxy on virtual threads (Stage 3) — cheap given the blocking fan-out per request.

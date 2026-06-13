@@ -2,6 +2,7 @@ package tech.treasury.repo;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import tech.treasury.domain.PaymentIntent;
+import tech.treasury.domain.PaymentIntentState;
 
 import java.time.Instant;
 import java.util.List;
@@ -15,4 +16,6 @@ public interface PaymentIntentRepository extends JpaRepository<PaymentIntent, UU
     long countByAgentIdAndCreatedAtAfter(String agentId, Instant after);
 
     List<PaymentIntent> findTop50ByOrderByCreatedAtDesc();
+
+    List<PaymentIntent> findByStateAndCreatedAtAfter(PaymentIntentState state, Instant after);
 }

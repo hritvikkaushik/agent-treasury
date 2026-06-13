@@ -14,11 +14,10 @@
   pays good-data-co 2× → real x402 settles → treasury writes on-chain feedback → reputation rose
   85→90 (txs `0x90e48e8d…`, `0x6ce73dea…`). Both protocols real, no human in the loop. 33 offline
   tests green. (Earlier this phase: ERC-8004 deployed; real settlement + reputation gating verified.)
-- **Next action:** (a) reconciliation `@Scheduled` job (re-verify settled/failed vs chain);
-  (b) cleanups — move executor network call outside the DB tx, feedback-writer nonce sequencing.
-  Core loop + dashboard are demo-ready; these are hardening/polish.
-- **Blockers:** none. Full demo runs: `./scripts/dev-db.sh up`, run app (with X402_ENABLED=true
-  ERC8004_ENABLED=true for real chain, or defaults for offline), open `http://localhost:8090/`.
+- **Next action:** Submission-ready. Optional polish only: move executor network call outside the DB
+  tx; sequence feedback-writer nonce for rapid concurrent writes. Otherwise rehearse the demo (`DEMO.md`).
+- **Blockers:** none. Full demo: `./scripts/dev-db.sh up`, run app (X402_ENABLED=true ERC8004_ENABLED=true
+  for real chain, or defaults for offline), open `http://localhost:8090/`. Script in `DEMO.md`.
 
 Wallet roles recap: **treasury `0x44bbaa…`** = payer (USDC ✓ + AVAX ✓);
 **facilitator `0x6f40…`** = settlement submitter (AVAX ✓) and current `PAY_TO`.
@@ -89,8 +88,11 @@ Wallet roles recap: **treasury `0x44bbaa…`** = payer (USDC ✓ + AVAX ✓);
       `http://localhost:8090/`. Verified: feed shows SETTLED + both DENIED reasons; agent burn-down.
 - [x] **Test/runtime DB isolation** ✅ (commit 60bafde). Tests use `treasury_test`; DataSeeder upserts
       the demo agent. (Fixed stale-row 401s that rolled back denials.)
-- [ ] Reconciliation `@Scheduled` job: re-verify SETTLED/FAILED vs on-chain.
-- [ ] Move the executor network call outside the DB transaction in `TreasuryService`.
+- [x] **Reconciliation `@Scheduled` job** ✅. `ReconciliationService` (active with x402.enabled)
+      re-verifies recent SETTLED intents against chain receipts (web3j), flags mismatches. Logic unit-
+      tested via a `ReceiptStatusProvider` seam (3 tests). `@EnableScheduling`.
+- [x] **Demo + resume material** ✅. `DEMO.md` (run + 4-beat script); refreshed résumé bullets (DESIGN §10).
+- [ ] Move the executor network call outside the DB transaction; sequence feedback-writer nonce. (Polish.)
 
 ## Phase 3 — Demo polish
 - [ ] Dashboard: budget burn-down, payment feed, blocked-with-reason.

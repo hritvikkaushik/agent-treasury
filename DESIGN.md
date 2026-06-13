@@ -313,16 +313,31 @@ velocity rule. Never cut: idempotency, policy engine, the two live blocks, one r
 
 ## 10. Resume translation
 
-- Designed a policy-enforcement payment gateway letting autonomous agents transact under budget,
-  velocity, and counterparty-risk constraints — **agents hold authority, never keys.**
-- Built an **idempotent payment-intent state machine** and **double-entry ledger** with automated
-  **on-chain reconciliation**.
-- Integrated on-chain identity/reputation registries (**ERC-8004**) as a real-time risk signal with
-  cached reads; closed the loop by publishing settlement feedback.
-- High-concurrency forwarding proxy on **Java 21 virtual threads**.
+Polished bullets (all of this is built and verified on Avalanche Fuji, not aspirational):
 
-Interview stories it generates: exactly-once payment semantics, custody separation, cache-freshness
-vs. correctness on risk reads, reconciliation as defense-in-depth.
+- Built a **policy-enforcement payment gateway** in **Java 21 / Spring Boot** that lets autonomous AI
+  agents transact under per-tx, daily-budget, velocity, and counterparty-reputation constraints —
+  **agents hold spending authority, never private keys** (the treasury custodies keys and signs only
+  after policy approval).
+- Implemented an **idempotent payment-intent state machine** + **double-entry ledger** (Postgres,
+  Flyway) with a **scheduled on-chain reconciliation** job that re-verifies settlements against chain
+  receipts — defense-in-depth against ledger/chain drift.
+- Integrated the **x402** protocol end-to-end: signed **EIP-3009 (`transferWithAuthorization`)**
+  authorizations with web3j and settled real USDC via an x402 facilitator (gasless for the payer).
+- Integrated **ERC-8004** on-chain identity + reputation as a real-time risk signal (web3j reads,
+  Caffeine-cached) and **closed the trust loop** by writing `giveFeedback` after each payment, so a
+  counterparty's on-chain reputation reflects its transaction history.
+- Designed the system so the chain layer sits behind interfaces (`PaymentExecutor`,
+  `ReputationProvider`, `FeedbackWriter`), keeping a **35-test suite** fully offline/deterministic
+  while the same code runs live on-chain via config flags.
+
+Interview stories it generates: exactly-once payment semantics (idempotency key + unique constraint);
+custody separation (authority vs. keys); EIP-712 signing pitfalls (domain/`v` make-or-break);
+cache-freshness vs. correctness on risk reads; reconciliation as defense-in-depth; and a real bug —
+test/runtime DB pollution causing rolled-back denials, fixed by DB isolation + an upserting seeder.
+
+One-line résumé summary: *"Built the risk & control layer for autonomous agent payments — x402
+settlement gated by ERC-8004 reputation and spend policy, on Avalanche; Java/Spring Boot, web3j."*
 
 ---
 
