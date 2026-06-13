@@ -29,6 +29,14 @@ x402:
   max-timeout-seconds: ${MAX_TIMEOUT_SECONDS:300}
   treasury-private-key: ${TREASURY_PRIVATE_KEY:}
 
+erc8004:
+  # When false (default), reputation comes from the in-memory stub. Set ERC8004_ENABLED=true (with
+  # deployed registry addresses) to read real on-chain reputation.
+  enabled: ${ERC8004_ENABLED:false}
+  identity-registry: ${IDENTITY_REGISTRY_ADDRESS:}
+  reputation-registry: ${REPUTATION_REGISTRY_ADDRESS:}
+  rpc-url: ${RPC_URL:https://api.avax-test.network/ext/bc/C/rpc}
+
 server:
   port: 8090
   # Serve the proxy on virtual threads (Stage 3) — cheap given the blocking fan-out per request.

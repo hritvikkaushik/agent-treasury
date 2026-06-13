@@ -47,11 +47,16 @@
             <artifactId>postgresql</artifactId>
             <scope>runtime</scope>
         </dependency>
-        <!-- x402 client-side signing (EIP-712 / EIP-3009) — same lib proven in the smoke test -->
+        <!-- x402 signing (EIP-712/EIP-3009) + ERC-8004 contract reads (eth_call). core includes crypto. -->
         <dependency>
             <groupId>org.web3j</groupId>
-            <artifactId>crypto</artifactId>
+            <artifactId>core</artifactId>
             <version>4.12.2</version>
+        </dependency>
+        <!-- reputation read cache -->
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
         </dependency>
 
         <dependency>
