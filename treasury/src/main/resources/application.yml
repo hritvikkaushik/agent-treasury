@@ -16,6 +16,19 @@ spring:
   flyway:
     enabled: true
 
+x402:
+  # When false (default), payments use the stub executor (no chain) — keeps tests offline.
+  # Set X402_ENABLED=true (with a funded TREASURY_PRIVATE_KEY + running facilitator) for real settlement.
+  enabled: ${X402_ENABLED:false}
+  facilitator-url: ${FACILITATOR_URL:http://localhost:8080}
+  network: ${NETWORK:avalanche-fuji}
+  chain-id: ${CHAIN_ID:43113}
+  asset: ${USDC_ADDRESS:0x5425890298aed601595a70AB815c96711a31Bc65}
+  usdc-domain-name: ${USDC_DOMAIN_NAME:USD Coin}
+  usdc-domain-version: ${USDC_DOMAIN_VERSION:2}
+  max-timeout-seconds: ${MAX_TIMEOUT_SECONDS:300}
+  treasury-private-key: ${TREASURY_PRIVATE_KEY:}
+
 server:
   port: 8090
   # Serve the proxy on virtual threads (Stage 3) — cheap given the blocking fan-out per request.

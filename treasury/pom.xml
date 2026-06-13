@@ -47,6 +47,12 @@
             <artifactId>postgresql</artifactId>
             <scope>runtime</scope>
         </dependency>
+        <!-- x402 client-side signing (EIP-712 / EIP-3009) — same lib proven in the smoke test -->
+        <dependency>
+            <groupId>org.web3j</groupId>
+            <artifactId>crypto</artifactId>
+            <version>4.12.2</version>
+        </dependency>
 
         <dependency>
             <groupId>org.springframework.boot</groupId>
