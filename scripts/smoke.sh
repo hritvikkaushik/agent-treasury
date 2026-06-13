@@ -2,6 +2,9 @@
 # Phase-0 smoke test: web3j EIP-3009 sign -> facilitator /verify -> /settle.
 # Runs inside a Maven+JDK21 Docker container, so the host needs only Docker (no Java/Maven).
 # Usage:  ./scripts/smoke.sh        (run from anywhere in the repo)
+#
+# NOTE: we do NOT `source .env` — it holds values with spaces (USDC_DOMAIN_NAME=USD Coin)
+# that must stay unquoted for `docker --env-file`. We grep out only what the host needs.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -11,9 +14,9 @@ if [[ ! -f .env ]]; then
   echo "No .env found. Copy .env.example to .env and fill it in." >&2
   exit 1
 fi
-set -a; source .env; set +a
 
-FAC="${FACILITATOR_URL:-http://localhost:8080}"
+FAC="$(grep -E '^FACILITATOR_URL=' .env | head -1 | cut -d= -f2- | tr -d ' "')"
+FAC="${FAC:-http://localhost:8080}"
 if command -v curl >/dev/null 2>&1; then
   echo "Checking facilitator at $FAC ..."
   curl -fsS "$FAC/health" >/dev/null \

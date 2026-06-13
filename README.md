@@ -45,14 +45,15 @@ and test USDC ([Circle faucet](https://faucet.circle.com/), select Avalanche Fuj
 cp .env.example .env            # fill in throwaway testnet keys + PAY_TO
 cp .claude/settings.json.example .claude/settings.json   # optional: pre-approve dev commands
 
-# 2. Run the x402.rs facilitator against Fuji (Linux/Docker)
-#    see infra/facilitator/README.md
-docker run -v "$(pwd)/infra/facilitator/config.json:/app/config.json" \
-  -e FACILITATOR_PRIVATE_KEY -p 8080:8080 ghcr.io/x402-rs/x402-facilitator
+# 2. Run the x402.rs facilitator against Fuji (Linux/Docker) — see infra/facilitator/README.md
+docker run -d --name x402-facilitator --restart unless-stopped \
+  -v "$(pwd)/infra/facilitator/config.json:/app/config.json:ro" \
+  --env-file .env -p 8080:8080 ghcr.io/x402-rs/x402-facilitator
+curl -s localhost:8080/supported   # confirm eip155:43113
 
 # 3. Smoke test: sign one EIP-3009 payment and push it through the facilitator
-set -a; source .env; set +a
-cd smoke-test && mvn -q compile exec:java
+#    Runs in a Maven+JDK21 container (host needs only Docker). Do NOT `source .env`.
+./scripts/smoke.sh
 # -> prints signature, X-PAYMENT header, /verify result, /settle tx hash (Snowtrace link)
 ```
 

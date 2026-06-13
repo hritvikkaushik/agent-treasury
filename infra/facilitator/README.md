@@ -7,14 +7,20 @@ payments on Fuji. The `config.json` here is pre-set for `eip155:43113` (see `SPI
 The facilitator's signer wallet (`FACILITATOR_PRIVATE_KEY`) **must hold test AVAX** — it submits the
 settlement tx and pays gas. The `config.json` interpolates `$FACILITATOR_PRIVATE_KEY` from the env.
 
+Run detached, passing the repo-root `.env` via `--env-file` (do NOT `source` it — see `.env.example`).
+From the repo root:
 ```bash
-set -a; source ../../.env; set +a            # loads FACILITATOR_PRIVATE_KEY
-docker run --rm \
-  -v "$(pwd)/config.json:/app/config.json" \
-  -e FACILITATOR_PRIVATE_KEY \
+docker run -d --name x402-facilitator --restart unless-stopped \
+  -v "$(pwd)/infra/facilitator/config.json:/app/config.json:ro" \
+  --env-file .env \
   -p 8080:8080 \
   ghcr.io/x402-rs/x402-facilitator
+
+docker logs -f x402-facilitator     # follow logs
+docker rm -f x402-facilitator       # stop + remove
 ```
+(`docker compose` plugin isn't installed on the runtime box, so we use plain `docker run`. The
+`docker-compose.yml` here is kept as an optional convenience if you install the plugin.)
 
 ## Verify it's up and on Fuji
 ```bash
