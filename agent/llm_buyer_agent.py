@@ -17,7 +17,7 @@ import urllib.error
 import urllib.request
 
 # ---- config (placeholders — fill these in) -------------------------------------------------------
-LLM_API_KEY = os.environ.get("LLM_API_KEY", "")                       # REQUIRED — your free-tier key
+LLM_API_KEY = os.environ.get("LLM_API_KEY", "")                       # REQUIRED — your free-tier key (set via env, never hardcode)
 LLM_BASE_URL = os.environ.get("LLM_BASE_URL", "https://api.groq.com/openai/v1")  # any OpenAI-compatible API
 LLM_MODEL = os.environ.get("LLM_MODEL", "llama-3.1-8b-instant")       # a model your provider offers
 
@@ -65,7 +65,14 @@ def chat(messages):
                           "temperature": 0.3, "max_tokens": 200}).encode()
     req = urllib.request.Request(
         f"{LLM_BASE_URL.rstrip('/')}/chat/completions", data=payload, method="POST",
-        headers={"Content-Type": "application/json", "Authorization": f"Bearer {LLM_API_KEY}"})
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {LLM_API_KEY}",
+            # Providers like Groq sit behind Cloudflare, which 403s the default Python-urllib
+            # User-Agent (error 1010). Send a normal browser-style UA so the request gets through.
+            "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                          "(KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+        })
     with urllib.request.urlopen(req, timeout=60) as r:
         data = json.loads(r.read())
     return data["choices"][0]["message"]["content"]
