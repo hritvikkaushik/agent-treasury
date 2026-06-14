@@ -3,13 +3,12 @@
 Autonomous research agent that buys market data through Agent Treasury.
 
 It pursues a goal — assemble a market report by purchasing datasets — but it holds NO wallet and NO
-private key. It simply asks the treasury to pay providers; the treasury enforces budget + reputation
-guardrails and signs/settles on-chain. The agent reacts to each outcome on its own (skips untrusted
-providers, stops when a limit is hit). No human in the loop.
+private key. It asks the treasury to pay providers; the treasury enforces budget + reputation
+guardrails and signs/settles on-chain. The agent reacts to each outcome on its own.
 
-This is a plain HTTP client (Python stdlib only) — the treasury doesn't care what language the agent
-is written in. Swap this decision loop for an LLM and you have an AI agent (see agent/README.md).
+Logs every step (with timestamps) and every treasury request/response, flushed live.
 """
+import datetime
 import json
 import os
 import time
@@ -21,8 +20,6 @@ TREASURY = os.environ.get("TREASURY_URL", "http://localhost:8090")
 API_KEY = os.environ.get("AGENT_KEY", "demo-key-agent-1")
 USDC = "0x5425890298aed601595a70AB815c96711a31Bc65"
 
-# The agent's shopping list: data providers it would like to buy from, in priority order.
-# (Providers are identified by their on-chain address; reputation lives on-chain in ERC-8004.)
 GOOD = "0x6f409644a8a0b598284e8ca1a7562759f2189fbf"      # good-data-co  (reputable)
 SKETCHY = "0x000000000000000000000000000000000000dEaD"   # sketchy-data-inc (low reputation)
 
@@ -36,74 +33,71 @@ PLAN = [
 ]
 
 
+def log(msg):
+    print(f"[{datetime.datetime.now():%H:%M:%S}] {msg}", flush=True)
+
+
 def usd(atomic):
     return f"${atomic / 1e6:.2f}"
 
 
 def pay(payee, amount_atomic):
-    """Ask the treasury to pay a provider. Returns (http_status, body_dict)."""
-    body = json.dumps({"payee": payee, "asset": USDC, "amountAtomic": amount_atomic}).encode()
+    """Ask the treasury to pay a provider. Returns (http_status, body_dict). Logs request + response."""
+    payload = {"payee": payee, "asset": USDC, "amountAtomic": amount_atomic}
+    log(f"   → POST {TREASURY}/proxy  {json.dumps(payload)}")
     req = urllib.request.Request(
-        f"{TREASURY}/proxy",
-        data=body,
-        method="POST",
-        headers={
-            "Content-Type": "application/json",
-            "X-Agent-Key": API_KEY,
-            "Idempotency-Key": str(uuid.uuid4()),
-        },
-    )
+        f"{TREASURY}/proxy", data=json.dumps(payload).encode(), method="POST",
+        headers={"Content-Type": "application/json", "X-Agent-Key": API_KEY,
+                 "Idempotency-Key": str(uuid.uuid4())})
     try:
         with urllib.request.urlopen(req) as r:
-            return r.status, json.loads(r.read())
+            status, body = r.status, json.loads(r.read())
     except urllib.error.HTTPError as e:
-        return e.code, json.loads(e.read())
+        status, body = e.code, json.loads(e.read())
     except urllib.error.URLError as e:
-        return 0, {"error": f"cannot reach treasury at {TREASURY}: {e.reason}"}
+        log(f"   ← ERROR cannot reach treasury: {e.reason}")
+        return 0, {"error": str(e.reason)}
+    log(f"   ← HTTP {status}  state={body.get('state')} reason={body.get('denialReason')} "
+        f"tx={(body.get('txHash') or '')[:16]}")
+    return status, body
 
 
 def main():
-    print("🤖  Research Agent")
-    print("    goal: assemble a market report by purchasing data — within budget, trusted providers only.")
-    print(f"    (no wallet, no keys — paying via the treasury at {TREASURY})\n")
-    time.sleep(1)
-
+    log("🤖 Research Agent starting")
+    log(f"   goal: assemble a market report by buying data — within budget, trusted providers only")
+    log(f"   treasury={TREASURY}  (no wallet, no keys)")
     bought, skipped = [], []
-    for label, addr, price in PLAN:
-        print(f"→ I need: {label}.  Requesting payment of {usd(price)}…")
-        time.sleep(1.5)
+
+    for i, (label, addr, price) in enumerate(PLAN, 1):
+        log("")
+        log(f"[{i}/{len(PLAN)}] I need: {label} — will request {usd(price)}.")
+        time.sleep(1.2)
         status, res = pay(addr, price)
         state = res.get("state")
 
         if state == "SETTLED":
-            tx = (res.get("txHash") or "")[:16]
-            print(f"   ✅ paid ({tx}…) — dataset acquired.\n")
+            log(f"   ✅ paid — dataset acquired.")
             bought.append(label)
         elif state == "DENIED":
             reason = res.get("denialReason")
-            print(f"   ⛔ treasury blocked it: {reason} — {res.get('denialDetail', '')}")
-            if reason == "REPUTATION_BELOW_THRESHOLD":
-                print("      → provider isn't trustworthy enough. Skipping it.\n")
-                skipped.append(label)
-            elif reason == "PER_TX_CAP_EXCEEDED":
-                print("      → too pricey for a single purchase. Skipping.\n")
-                skipped.append(label)
-            elif reason == "DAILY_BUDGET_EXHAUSTED":
-                print("      → daily budget spent. Wrapping up the report with what I have.\n")
+            log(f"   ⛔ blocked: {reason} — {res.get('denialDetail', '')}")
+            if reason == "DAILY_BUDGET_EXHAUSTED":
+                log("      → daily budget spent; wrapping up the report.")
                 break
-            else:
-                skipped.append(label)
+            log("      → skipping and moving on.")
+            skipped.append(label)
         elif status == 401:
-            print("   ⚠️  treasury rejected my API key. Is AGENT_KEY correct?\n")
+            log("   ⚠️ treasury rejected my API key (AGENT_KEY). Stopping.")
             break
         else:
-            print(f"   ⚠️  unexpected response ({status}): {res}\n")
-        time.sleep(1)
+            log(f"   ⚠️ unexpected response: {res}")
+        time.sleep(0.8)
 
-    print("── Report assembled ──")
-    print(f"   purchased ({len(bought)}): " + (", ".join(bought) or "nothing"))
-    print(f"   skipped   ({len(skipped)}): " + (", ".join(skipped) or "nothing"))
-    print("\n   The agent stayed within policy the whole time — the treasury made sure of it.")
+    log("")
+    log("── Report assembled ──")
+    log(f"   purchased ({len(bought)}): " + (", ".join(bought) or "nothing"))
+    log(f"   skipped   ({len(skipped)}): " + (", ".join(skipped) or "nothing"))
+    log("   The agent stayed within policy the whole time — the treasury made sure of it.")
 
 
 if __name__ == "__main__":

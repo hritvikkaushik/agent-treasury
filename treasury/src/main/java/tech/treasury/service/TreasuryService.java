@@ -1,5 +1,7 @@
 package tech.treasury.service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tech.treasury.api.PaymentResult;
@@ -29,6 +31,8 @@ import java.time.Instant;
 @Service
 public class TreasuryService {
 
+    private static final Logger log = LoggerFactory.getLogger(TreasuryService.class);
+
     private final AgentRepository agents;
     private final PaymentIntentService intents;
     private final LedgerService ledger;
@@ -55,26 +59,35 @@ public class TreasuryService {
         // Count prior payments BEFORE creating this intent, so velocity excludes the current attempt.
         long priorPayments = intents.recentPaymentCount(agentId, now);
 
+        log.info("processing payment: agent={} payee={} amount={}", agentId, payee, amountAtomic);
+
         PaymentIntent intent = intents.getOrCreate(agentId, payee, asset, amountAtomic, idempotencyKey, now);
         if (intent.getState().isTerminal()) {
-            return PaymentResult.of(intent); // idempotent replay — never double-spend
+            log.info("  idempotent replay (key={}) -> {} {}", idempotencyKey, intent.getState(),
+                    intent.getDenialReason() != null ? intent.getDenialReason() : "");
+            return PaymentResult.of(intent); // never double-spend
         }
 
         AgentEntity agent = agents.findById(agentId)
                 .orElseThrow(() -> new IllegalStateException("Unknown agent: " + agentId));
 
+        long spentToday = ledger.spentTodayAtomic(agentId, now);
+        Integer rep = reputation.reputationOf(payee);
+        log.info("  policy inputs: spentToday={} recentPayments={} counterpartyReputation={}",
+                spentToday, priorPayments, rep == null ? "unknown" : rep);
+
         PaymentContext ctx = new PaymentContext(
-                agentId, payee, asset, amountAtomic,
-                ledger.spentTodayAtomic(agentId, now),
-                (int) priorPayments,
-                reputation.reputationOf(payee));
+                agentId, payee, asset, amountAtomic, spentToday, (int) priorPayments, rep);
 
         Decision decision = policy.evaluate(ctx, agent.toPolicy());
         if (!decision.allowed()) {
             intent.deny(decision.reason(), now);
+            log.info("  DENIED: agent={} payee={} amount={} reason={}",
+                    agentId, payee, amountAtomic, decision.reason());
             return PaymentResult.of(intents.save(intent));
         }
 
+        log.info("  approved -> signing + settling…");
         intent.transitionTo(PaymentIntentState.APPROVED, now);
         intent.transitionTo(PaymentIntentState.SIGNED, now);
 
@@ -83,8 +96,10 @@ public class TreasuryService {
             ledger.recordPayment(intent.getId(), agentId, amountAtomic, now);
             intent.markSettled(exec.txHash(), now);
             feedbackWriter.recordSuccessfulPayment(payee); // async, best-effort: closes the reputation loop
+            log.info("  SETTLED: agent={} payee={} amount={} tx={}", agentId, payee, amountAtomic, exec.txHash());
         } else {
             intent.transitionTo(PaymentIntentState.FAILED, now);
+            log.warn("  FAILED: agent={} payee={} amount={} error={}", agentId, payee, amountAtomic, exec.error());
         }
         return PaymentResult.of(intents.save(intent));
     }

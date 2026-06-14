@@ -2,14 +2,14 @@
 """
 A dead-simple REAL LLM agent that spends through Agent Treasury.
 
-An LLM is put in the decision seat: it's told its goal + the available providers + its policy, and on
-each turn it returns one JSON action ("pay this merchant this much" or "finish"). The harness executes
-the payment via the treasury's POST /proxy and feeds the result back to the model, which reacts. The
-agent holds NO wallet and NO key — the treasury enforces every rule.
+An LLM is put in the decision seat: each turn it returns one JSON action ("pay this merchant this
+much" / "finish"). The harness executes the payment via the treasury's POST /proxy and feeds the
+result back, so the model reacts. The agent holds NO wallet and NO key — the treasury enforces rules.
 
 Works with ANY OpenAI-compatible chat API (set LLM_BASE_URL / LLM_MODEL / LLM_API_KEY). Python stdlib
-only — no pip installs. See agent/README.md for free-tier options.
+only. Logs every LLM call and every treasury call, with timestamps, flushed live.
 """
+import datetime
 import json
 import os
 import time
@@ -25,7 +25,6 @@ TREASURY = os.environ.get("TREASURY_URL", "http://localhost:8090")
 API_KEY = os.environ.get("AGENT_KEY", "demo-key-agent-1")
 USDC = "0x5425890298aed601595a70AB815c96711a31Bc65"
 
-# The model refers to merchants by short key; the harness maps to the real on-chain address.
 MERCHANTS = {
     "good": "0x6f409644a8a0b598284e8ca1a7562759f2189fbf",      # good-data-co (reputable)
     "sketchy": "0x000000000000000000000000000000000000dEaD",   # sketchy-data-inc (low reputation)
@@ -54,6 +53,10 @@ or
 {"thought":"<one short sentence>","action":"finish"}"""
 
 MAX_STEPS = 8
+
+
+def log(msg):
+    print(f"[{datetime.datetime.now():%H:%M:%S}] {msg}", flush=True)
 
 
 def usd(atomic):
@@ -89,73 +92,87 @@ def extract_json(text):
 
 
 def pay(payee, amount_atomic):
-    body = json.dumps({"payee": payee, "asset": USDC, "amountAtomic": amount_atomic}).encode()
+    payload = {"payee": payee, "asset": USDC, "amountAtomic": amount_atomic}
+    log(f"   → POST {TREASURY}/proxy  {json.dumps(payload)}")
     req = urllib.request.Request(
-        f"{TREASURY}/proxy", data=body, method="POST",
+        f"{TREASURY}/proxy", data=json.dumps(payload).encode(), method="POST",
         headers={"Content-Type": "application/json", "X-Agent-Key": API_KEY})
     try:
         with urllib.request.urlopen(req) as r:
-            return r.status, json.loads(r.read())
+            status, body = r.status, json.loads(r.read())
     except urllib.error.HTTPError as e:
-        return e.code, json.loads(e.read())
+        status, body = e.code, json.loads(e.read())
     except urllib.error.URLError as e:
         return 0, {"error": str(e.reason)}
+    log(f"   ← HTTP {status}  state={body.get('state')} reason={body.get('denialReason')} "
+        f"tx={(body.get('txHash') or '')[:16]}")
+    return status, body
 
 
 def main():
     if not LLM_API_KEY:
-        print("⚠️  Set LLM_API_KEY (and optionally LLM_BASE_URL, LLM_MODEL). See agent/README.md.")
+        log("⚠️  Set LLM_API_KEY (and optionally LLM_BASE_URL, LLM_MODEL). See agent/README.md.")
         return
 
-    print(f"🧠  LLM agent ({LLM_MODEL}) — goal: buy market data within policy, no wallet/keys.\n")
+    log(f"🧠 LLM agent starting — model={LLM_MODEL} via {LLM_BASE_URL}")
+    log(f"   goal: buy market data within policy, no wallet/keys.  treasury={TREASURY}")
     messages = [{"role": "system", "content": SYSTEM},
                 {"role": "user", "content": "Begin. Decide your first action."}]
     purchased = []
 
-    for _ in range(MAX_STEPS):
+    for step in range(1, MAX_STEPS + 1):
+        log("")
+        log(f"[step {step}/{MAX_STEPS}] → calling LLM ({len(messages)} messages in context)…")
+        t0 = time.time()
         try:
             content = chat(messages)
-        except Exception as e:  # noqa: BLE001 — keep the demo resilient to provider hiccups
-            print(f"LLM call failed: {e}")
+        except urllib.error.HTTPError as e:
+            log(f"   ← LLM HTTP {e.code}: {e.read()[:200]}")
             break
+        except Exception as e:  # noqa: BLE001 — keep the demo resilient
+            log(f"   ← LLM call failed: {e}")
+            break
+        log(f"   ← LLM replied in {int((time.time() - t0) * 1000)}ms: {content.strip()[:240]}")
         messages.append({"role": "assistant", "content": content})
 
         action = extract_json(content)
         if not action:
-            print(f"(could not parse model output, stopping)\n{content}")
+            log("   (could not parse model output as JSON — stopping)")
             break
 
-        print(f"🧠 {action.get('thought', '').strip()}")
+        log(f"🧠 decision: {action.get('thought', '').strip()}")
         if action.get("action") == "finish":
-            print("🏁 agent decided it's done.")
+            log("🏁 agent decided it's done.")
             break
 
         mkey = action.get("merchant")
         amount = int(action.get("amountAtomic", 0))
         addr = MERCHANTS.get(mkey)
         if not addr:
+            log(f"   (unknown merchant '{mkey}'; telling the model to use good/sketchy)")
             messages.append({"role": "user", "content": "Unknown merchant; use 'good' or 'sketchy'."})
             continue
 
-        print(f"💸 paying {mkey} {usd(amount)} …")
+        log(f"💸 paying {mkey} {usd(amount)} …")
         status, res = pay(addr, amount)
-        state, reason, tx = res.get("state"), res.get("denialReason"), res.get("txHash")
+        state = res.get("state")
         if state == "SETTLED":
-            print(f"   ✅ SETTLED ({(tx or '')[:14]}…)\n")
+            log("   ✅ SETTLED")
             purchased.append((mkey, amount))
         elif state == "DENIED":
-            print(f"   ⛔ DENIED — {reason}\n")
+            log(f"   ⛔ DENIED — {res.get('denialReason')}")
         else:
-            print(f"   ⚠️  {status}: {res}\n")
+            log(f"   ⚠️ unexpected: HTTP {status} {res}")
 
         messages.append({"role": "user",
-                         "content": f"Treasury response: state={state} reason={reason} tx={tx}. "
-                                    f"Decide your next action (JSON only)."})
+                         "content": f"Treasury response: state={state} reason={res.get('denialReason')} "
+                                    f"tx={res.get('txHash')}. Decide your next action (JSON only)."})
         time.sleep(0.5)
 
     total = sum(a for _, a in purchased)
-    print(f"\n── Done. Purchased {len(purchased)} dataset(s), total {usd(total)}. "
-          f"The treasury enforced every limit. ──")
+    log("")
+    log(f"── Done. Purchased {len(purchased)} dataset(s), total {usd(total)}. "
+        f"The treasury enforced every limit. ──")
 
 
 if __name__ == "__main__":

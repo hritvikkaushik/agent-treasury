@@ -20,5 +20,6 @@ exec docker run --rm --network host \
   -e LLM_API_KEY="$LLM_API_KEY" \
   -e LLM_BASE_URL="${LLM_BASE_URL:-https://api.groq.com/openai/v1}" \
   -e LLM_MODEL="${LLM_MODEL:-llama-3.1-8b-instant}" \
+  -e PYTHONUNBUFFERED=1 \
   -v "$ROOT/agent":/agent -w /agent \
-  python:3.12-slim python llm_buyer_agent.py
+  python:3.12-slim python -u llm_buyer_agent.py

@@ -1,6 +1,8 @@
 package tech.treasury.api;
 
 import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -24,6 +26,8 @@ import java.util.UUID;
 @RequestMapping("/proxy")
 public class ProxyController {
 
+    private static final Logger log = LoggerFactory.getLogger(ProxyController.class);
+
     private final AgentService agentService;
     private final TreasuryService treasury;
 
@@ -38,8 +42,13 @@ public class ProxyController {
             @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
             @Valid @RequestBody PaymentRequest request) {
 
-        AgentEntity agent = agentService.authenticate(apiKey)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "invalid agent key"));
+        log.info("POST /proxy: payee={} amount={} idem={}",
+                request.payee(), request.amountAtomic(), idempotencyKey == null ? "(auto)" : idempotencyKey);
+
+        AgentEntity agent = agentService.authenticate(apiKey).orElseThrow(() -> {
+            log.warn("POST /proxy -> 401 (invalid/missing X-Agent-Key)");
+            return new ResponseStatusException(HttpStatus.UNAUTHORIZED, "invalid agent key");
+        });
 
         String key = (idempotencyKey != null && !idempotencyKey.isBlank())
                 ? idempotencyKey
@@ -54,6 +63,7 @@ public class ProxyController {
             case FAILED -> HttpStatus.BAD_GATEWAY;       // 502: settlement failed downstream
             default -> HttpStatus.OK;
         };
+        log.info("POST /proxy -> {} {} (agent={})", status.value(), result.state(), agent.getId());
         return ResponseEntity.status(status).body(result);
     }
 }
