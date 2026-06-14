@@ -13,6 +13,13 @@ DEMO-GUIDE.private.md
 target/
 *.class
 
+# Python (agent scripts)
+__pycache__/
+*.pyc
+
+# Local Claude settings (use .claude/settings.json.example as the template)
+.claude/settings.json
+
 # Node / Hardhat (contracts/)
 node_modules/
 artifacts/
