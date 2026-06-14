@@ -24,8 +24,35 @@ Walks a shopping list of providers and, for each, asks the treasury to pay. It i
 Config via env: `TREASURY_URL` (default `http://localhost:8090`), `AGENT_KEY` (default
 `demo-key-agent-1`).
 
-## Making it a real LLM agent (optional upgrade)
-The decision loop is plain Python. To make it genuinely AI-driven, replace the loop with an LLM that's
-given the goal and a single tool — `pay(payee, amountAtomic)` — wired to the same `POST /proxy` call.
-The model decides which providers to buy from and how to react to denials; the `pay` function (and the
-treasury behind it) stays exactly the same. Needs an LLM API key. Ask and this can be added.
+## The LLM-driven agent (`llm_buyer_agent.py`)
+
+Same idea, but a real LLM is in the decision seat. Each turn the model returns one JSON action
+(`pay` a merchant / `finish`); the harness calls the treasury and feeds the result back, so the model
+reacts to denials. It's primed to attempt all the guardrail cases (trusted pay, untrusted block,
+over-cap block). Python stdlib only.
+
+### Pick any OpenAI-compatible provider (free tiers work)
+Set three env vars (placeholders are filled with a sensible default):
+
+| Var | What | Example |
+|-----|------|---------|
+| `LLM_API_KEY` | **required** — your key | `gsk_…` / `sk-…` |
+| `LLM_BASE_URL` | OpenAI-compatible endpoint | `https://api.groq.com/openai/v1` (Groq, free) |
+| `LLM_MODEL` | a model your provider offers | `llama-3.1-8b-instant` |
+
+Other free-tier options (all OpenAI-compatible): Groq, OpenRouter (`https://openrouter.ai/api/v1`),
+Google Gemini (`https://generativelanguage.googleapis.com/v1beta/openai`), or a local server
+(Ollama/LM Studio). It's a tiny agent (~6 short calls), so a free tier is plenty.
+
+### Run
+```bash
+export LLM_API_KEY=...           # your free-tier key
+# export LLM_BASE_URL=...        # optional override
+# export LLM_MODEL=...           # optional override
+./scripts/run-llm-agent.sh
+```
+The treasury must be up first. Watch the dashboard react as the model decides what to pay.
+
+> Note: the scripted `buyer_agent.py` is verified end-to-end; the LLM agent's harness is verified, but
+> you supply the model/key, so behavior depends on your provider. If a weak model returns malformed
+> JSON, lower the shopping ambition or use the scripted agent as the reliable fallback.
