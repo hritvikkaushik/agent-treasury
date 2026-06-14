@@ -79,12 +79,14 @@ write `giveFeedback` to ERC-8004. Reputation is built by real transaction histor
 the agent to move value it shouldn't. That's the missing trust-and-control layer for agent commerce."
 
 ## Reset between rehearsals
+Clear the payment feed but **keep the demo agent** (the agent is only seeded at app startup, so do
+NOT truncate the `agents` table while the app is running — that breaks auth until you restart):
 ```bash
-docker exec treasury-pg psql -U treasury -d treasury -c \
-  "truncate agents, payment_intent, journal_entry cascade;"   # app reseeds the demo agent on next boot
+./scripts/demo-reset.sh      # truncates payment_intent + journal_entry only
 ```
 (On-chain reputation persists across resets — to re-show the 85→90 rise from a clean base, redeploy
-the registries via `contracts/erc8004/scripts/deploy.js`.)
+the registries via `contracts/erc8004/scripts/deploy.js`. If you ever DO wipe the `agents` table,
+just restart the app: `docker restart treasury-app` re-seeds the demo agent.)
 
 ## Insurance
 - Pre-fund wallets the night before (faucets: build.avax.network console for AVAX, faucet.circle.com
