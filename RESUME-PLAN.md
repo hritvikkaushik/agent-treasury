@@ -22,8 +22,13 @@
   create-if-absent. Verified on Linux: created `research-bot` via API → its minted key settled a real
   tx (`0x656e394b…`); list/update work; delete refuses with 409 when payment history exists, 204 when
   clean. 43 tests green. Docs updated (USAGE §7a, USER-GUIDE, ARCHITECTURE, LLD, HLD, FLOWS §8).
-- **Next action:** optional polish only — move executor network call outside the DB tx; sequence
-  feedback-writer nonce. Otherwise submission-ready.
+- **In progress: deployment.** Target = GCP Compute Engine VM running the Docker stack (mirrors local).
+  Built the prerequisites: admin auth (`AdminAuthFilter`, `ADMIN_TOKEN`, enforced-when-set; admin.html
+  sends `X-Admin-Token`), `/health` endpoint, multi-stage `treasury/Dockerfile`, configurable
+  `SERVER_PORT`, prod `deploy/docker-compose.yml` (app+db+facilitator, only app port published), and
+  `deploy/README.md` (GCP steps). Deploy itself is run by the user on their GCP account.
+- **Next action:** user runs `deploy/README.md` steps on GCP. Then optional polish: executor network
+  call outside the DB tx; feedback-writer nonce sequencing.
 - **Blockers:** none. Full demo: `./scripts/dev-db.sh up`, run app (X402_ENABLED=true ERC8004_ENABLED=true
   for real chain, or defaults for offline), open `http://localhost:8090/`. Script in `DEMO.md`.
 

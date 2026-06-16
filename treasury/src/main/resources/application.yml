@@ -43,8 +43,13 @@ reconciliation:
   initial-delay-ms: ${RECONCILIATION_INITIAL_DELAY_MS:30000}
   interval-ms: ${RECONCILIATION_INTERVAL_MS:60000}
 
+admin:
+  # Shared token guarding /api/admin/**. If blank, admin is OPEN (local/dev). SET THIS before any
+  # public deploy. Sent by clients as `X-Admin-Token` or `Authorization: Bearer <token>`.
+  token: ${ADMIN_TOKEN:}
+
 server:
-  port: 8090
+  port: ${SERVER_PORT:8090}
   error:
     include-message: always   # surface ResponseStatusException reasons (e.g. admin 409) in the body
   # Serve the proxy on virtual threads (Stage 3) — cheap given the blocking fan-out per request.

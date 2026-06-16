@@ -42,7 +42,8 @@
   <header>
     <h1>Agent Treasury — Admin</h1>
     <span class="sub">add agents · configure spending policies · issue API keys</span>
-    <a href="/">← monitoring dashboard</a>
+    <a href="#" onclick="setToken();return false" style="margin-left:auto">set admin token</a>
+    <a href="/" style="margin-left:16px">← monitoring dashboard</a>
   </header>
 
   <div class="key-banner" id="keyBanner">
@@ -95,11 +96,32 @@
     const short = s => s ? s.slice(0,6)+"…"+s.slice(-4) : "";
     let agents = [];
 
+    function getToken(){ return localStorage.getItem("adminToken") || ""; }
+    function setToken(){
+      const t = prompt("Admin token (leave blank if the server is unprotected):", getToken());
+      if (t !== null){ localStorage.setItem("adminToken", t); load(); }
+    }
+    async function adminFetch(url, opts={}){
+      opts.headers = Object.assign({"X-Admin-Token": getToken()}, opts.headers || {});
+      let res = await fetch(url, opts);
+      if (res.status === 401){
+        const t = prompt("Admin token required:");
+        if (t !== null){ localStorage.setItem("adminToken", t); opts.headers["X-Admin-Token"] = t; res = await fetch(url, opts); }
+      }
+      return res;
+    }
+
     function showKey(k){ document.getElementById("keyValue").textContent = k;
       document.getElementById("keyBanner").style.display = "block"; }
 
     async function load(){
-      agents = await fetch("/api/admin/agents").then(r => r.json());
+      const res = await adminFetch("/api/admin/agents");
+      if (!res.ok){
+        document.getElementById("rows").innerHTML =
+          '<tr><td colspan="7" class="muted">unauthorized — click “set admin token”.</td></tr>';
+        return;
+      }
+      agents = await res.json();
       document.getElementById("rows").innerHTML = agents.map(a => `
         <tr>
           <td><b>${a.id}</b><br/><span class="muted">${a.name}</span></td>
@@ -138,10 +160,10 @@
       try {
         let res;
         if (editId) {
-          res = await fetch(`/api/admin/agents/${editId}`, {method:"PUT",
+          res = await adminFetch(`/api/admin/agents/${editId}`, {method:"PUT",
             headers:{"Content-Type":"application/json"}, body: JSON.stringify(b)});
         } else {
-          res = await fetch("/api/admin/agents", {method:"POST",
+          res = await adminFetch("/api/admin/agents", {method:"POST",
             headers:{"Content-Type":"application/json"}, body: JSON.stringify(b)});
         }
         if (!res.ok){ msg.textContent = "error: HTTP " + res.status + " " + (await res.text()); return; }
@@ -183,13 +205,13 @@
 
     async function rotate(id){
       if (!confirm("Rotate the API key for " + id + "? The old key stops working.")) return;
-      const res = await fetch(`/api/admin/agents/${id}/rotate-key`, {method:"POST"});
+      const res = await adminFetch(`/api/admin/agents/${id}/rotate-key`, {method:"POST"});
       if (res.ok){ showKey((await res.json()).apiKey); } else { alert("rotate failed: " + res.status); }
     }
 
     async function del(id){
       if (!confirm("Delete agent " + id + "?")) return;
-      const res = await fetch(`/api/admin/agents/${id}`, {method:"DELETE"});
+      const res = await adminFetch(`/api/admin/agents/${id}`, {method:"DELETE"});
       if (res.ok || res.status === 204){ load(); return; }
       let msg = "HTTP " + res.status;
       try { const b = await res.json(); msg = b.message || b.error || msg; } catch(e){}

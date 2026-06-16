@@ -33,6 +33,8 @@ Consumed via `docker --env-file` — **no quotes, no inline comments** (a space-
 | `IDENTITY_REGISTRY_ADDRESS` / `REPUTATION_REGISTRY_ADDRESS` | ERC-8004 (from deploy) | — |
 | `X402_ENABLED` | real settlement vs stub | `false` |
 | `ERC8004_ENABLED` | real reputation/feedback vs stub | `false` |
+| `ADMIN_TOKEN` | guards `/api/admin/**` (blank = open; **set before public deploy**) | `(blank)` |
+| `SERVER_PORT` | HTTP port | `8090` |
 | `RECONCILIATION_INITIAL_DELAY_MS` / `_INTERVAL_MS` | scheduler | `30000` / `60000` |
 
 Feature flags: leave both unset for an **offline** run (stubs); set `X402_ENABLED=true
