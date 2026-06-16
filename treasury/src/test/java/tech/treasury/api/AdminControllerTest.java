@@ -89,6 +89,23 @@ class AdminControllerTest {
     }
 
     @Test
+    void cannotDeleteAgentWithPaymentHistory() throws Exception {
+        String resp = mvc.perform(post("/api/admin/agents")
+                        .contentType(MediaType.APPLICATION_JSON).content(createBody("Bot Pay", 500_000, 60)))
+                .andReturn().getResponse().getContentAsString();
+        String id = json.readTree(resp).get("agent").get("id").asText();
+        String apiKey = json.readTree(resp).get("apiKey").asText();
+
+        reputation.set(GOOD, 85);
+        mvc.perform(post("/proxy").header("X-Agent-Key", apiKey)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"payee\":\"" + GOOD + "\",\"asset\":\"" + USDC + "\",\"amountAtomic\":100000}"))
+                .andExpect(status().isOk());
+
+        mvc.perform(delete("/api/admin/agents/" + id)).andExpect(status().isConflict());
+    }
+
+    @Test
     void rejectsBlankName() throws Exception {
         mvc.perform(post("/api/admin/agents")
                         .contentType(MediaType.APPLICATION_JSON).content(createBody("", 500_000, 60)))

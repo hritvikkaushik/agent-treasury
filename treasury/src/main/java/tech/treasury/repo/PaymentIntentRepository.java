@@ -15,6 +15,8 @@ public interface PaymentIntentRepository extends JpaRepository<PaymentIntent, UU
 
     long countByAgentIdAndCreatedAtAfter(String agentId, Instant after);
 
+    long countByAgentId(String agentId);
+
     List<PaymentIntent> findTop50ByOrderByCreatedAtDesc();
 
     List<PaymentIntent> findByStateAndCreatedAtAfter(PaymentIntentState state, Instant after);

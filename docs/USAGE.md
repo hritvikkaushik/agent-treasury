@@ -121,7 +121,7 @@ Create and configure agents at runtime (no redeploy, no SQL). Backed by the **ad
 | `POST` | `/api/admin/agents` | create an agent; **returns the API key once** |
 | `PUT` | `/api/admin/agents/{id}` | update name / policy / allowlists |
 | `POST` | `/api/admin/agents/{id}/rotate-key` | issue a new API key (returns it once) |
-| `DELETE` | `/api/admin/agents/{id}` | remove an agent |
+| `DELETE` | `/api/admin/agents/{id}` | remove an agent (**409** if it has payment history — ledger is kept intact) |
 
 Create request body:
 ```json

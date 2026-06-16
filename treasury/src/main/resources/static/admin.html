@@ -190,7 +190,10 @@
     async function del(id){
       if (!confirm("Delete agent " + id + "?")) return;
       const res = await fetch(`/api/admin/agents/${id}`, {method:"DELETE"});
-      if (res.ok || res.status === 204) load(); else alert("delete failed: " + res.status);
+      if (res.ok || res.status === 204){ load(); return; }
+      let msg = "HTTP " + res.status;
+      try { const b = await res.json(); msg = b.message || b.error || msg; } catch(e){}
+      alert("Delete failed: " + msg);
     }
 
     resetForm(); load();

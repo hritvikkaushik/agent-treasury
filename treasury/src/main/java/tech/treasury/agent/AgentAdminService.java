@@ -8,6 +8,7 @@ import tech.treasury.api.CreateAgentRequest;
 import tech.treasury.api.UpdateAgentRequest;
 import tech.treasury.domain.AgentEntity;
 import tech.treasury.repo.AgentRepository;
+import tech.treasury.repo.PaymentIntentRepository;
 
 import java.security.SecureRandom;
 import java.util.HashSet;
@@ -21,9 +22,11 @@ public class AgentAdminService {
     private static final SecureRandom RANDOM = new SecureRandom();
 
     private final AgentRepository agents;
+    private final PaymentIntentRepository intents;
 
-    public AgentAdminService(AgentRepository agents) {
+    public AgentAdminService(AgentRepository agents, PaymentIntentRepository intents) {
         this.agents = agents;
+        this.intents = intents;
     }
 
     /** A newly created agent plus its plaintext API key (returned to the caller exactly once). */
@@ -66,7 +69,13 @@ public class AgentAdminService {
 
     @Transactional
     public void delete(String id) {
-        agents.delete(require(id));
+        AgentEntity agent = require(id);
+        // Don't cascade-delete ledger/payment history — refuse instead (keeps the ledger intact).
+        if (intents.countByAgentId(id) > 0) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "agent has payment history and cannot be deleted (clear payments first)");
+        }
+        agents.delete(agent);
     }
 
     private AgentEntity require(String id) {
