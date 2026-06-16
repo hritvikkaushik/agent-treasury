@@ -16,12 +16,14 @@
   pays good-data-co 2× → real x402 settles → treasury writes on-chain feedback → reputation rose
   85→90 (txs `0x90e48e8d…`, `0x6ce73dea…`). Both protocols real, no human in the loop. 33 offline
   tests green. (Earlier this phase: ERC-8004 deployed; real settlement + reputation gating verified.)
-- **In progress:** **Admin dashboard** to add/configure agents + policies (was hardcoded in
-  DataSeeder). Docs updated (USAGE §7a, USER-GUIDE, ARCHITECTURE, LLD, HLD, FLOWS §8). Code next:
-  `AdminController` (`/api/admin/agents` CRUD), `AgentAdminService` (key-gen), `AgentEntity` mutators,
-  `static/admin.html`; DataSeeder → create-if-absent.
-- **Next action:** implement the admin dashboard (above), test, verify on Linux. Then optional polish:
-  move executor network call outside the DB tx; sequence feedback-writer nonce.
+- **Last completed:** **Admin dashboard DONE + live-verified.** Agents/policies are now configurable
+  at runtime (no longer hardcoded): `AdminController` (`/api/admin/agents` CRUD), `AgentAdminService`
+  (mints `atk_` keys, stores hashes), `AgentEntity` mutators, `static/admin.html`. DataSeeder →
+  create-if-absent. Verified on Linux: created `research-bot` via API → its minted key settled a real
+  tx (`0x656e394b…`); list/update work; delete refuses with 409 when payment history exists, 204 when
+  clean. 43 tests green. Docs updated (USAGE §7a, USER-GUIDE, ARCHITECTURE, LLD, HLD, FLOWS §8).
+- **Next action:** optional polish only — move executor network call outside the DB tx; sequence
+  feedback-writer nonce. Otherwise submission-ready.
 - **Blockers:** none. Full demo: `./scripts/dev-db.sh up`, run app (X402_ENABLED=true ERC8004_ENABLED=true
   for real chain, or defaults for offline), open `http://localhost:8090/`. Script in `DEMO.md`.
 
