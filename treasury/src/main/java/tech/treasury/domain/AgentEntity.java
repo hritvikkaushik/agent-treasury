@@ -82,4 +82,54 @@ public class AgentEntity {
     public String getApiKeyHash() {
         return apiKeyHash;
     }
+
+    public Set<String> getAllowedMerchants() {
+        return allowedMerchants;
+    }
+
+    public Set<String> getAllowedAssets() {
+        return allowedAssets;
+    }
+
+    public long getPerTxCapAtomic() {
+        return perTxCapAtomic;
+    }
+
+    public long getDailyBudgetAtomic() {
+        return dailyBudgetAtomic;
+    }
+
+    public int getVelocityPerMinute() {
+        return velocityPerMinute;
+    }
+
+    public int getMinReputation() {
+        return minReputation;
+    }
+
+    // --- mutators used only by the admin path (AgentAdminService) ---
+
+    public void rename(String name) {
+        this.name = name;
+    }
+
+    public void updatePolicy(long perTxCapAtomic, long dailyBudgetAtomic,
+                             int velocityPerMinute, int minReputation) {
+        this.perTxCapAtomic = perTxCapAtomic;
+        this.dailyBudgetAtomic = dailyBudgetAtomic;
+        this.velocityPerMinute = velocityPerMinute;
+        this.minReputation = minReputation;
+    }
+
+    public void setAllowedMerchants(Set<String> allowedMerchants) {
+        this.allowedMerchants = new HashSet<>(allowedMerchants);
+    }
+
+    public void setAllowedAssets(Set<String> allowedAssets) {
+        this.allowedAssets = new HashSet<>(allowedAssets);
+    }
+
+    public void setApiKeyHash(String apiKeyHash) {
+        this.apiKeyHash = apiKeyHash;
+    }
 }

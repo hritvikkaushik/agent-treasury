@@ -33,18 +33,21 @@ public class DataSeeder implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        // Upsert (not create-if-absent) so the demo agent always has the correct key hash + policy,
-        // even if a stale row exists.
-        agents.save(new AgentEntity(
-                DEMO_AGENT_ID,
-                "Research Agent",
-                AgentService.sha256Hex(DEMO_API_KEY),
-                500_000,        // 0.50 USDC per-tx cap
-                5_000_000,      // 5.00 USDC daily budget
-                5,              // 5 payments / minute
-                60,             // min counterparty reputation
-                Set.of(GOOD_MERCHANT, SKETCHY_MERCHANT),
-                Set.of(USDC)));
+        // Create-if-absent (not upsert) so policy edits made via the admin dashboard survive restarts.
+        // The truncate-wipes-agent footgun is handled by scripts/demo-reset.sh (never truncates agents).
+        if (!agents.existsById(DEMO_AGENT_ID)) {
+            agents.save(new AgentEntity(
+                    DEMO_AGENT_ID,
+                    "Research Agent",
+                    AgentService.sha256Hex(DEMO_API_KEY),
+                    500_000,        // 0.50 USDC per-tx cap
+                    5_000_000,      // 5.00 USDC daily budget
+                    5,              // 5 payments / minute
+                    60,             // min counterparty reputation
+                    Set.of(GOOD_MERCHANT, SKETCHY_MERCHANT),
+                    Set.of(USDC)));
+        }
+        // Stub reputations are in-memory, so (re)set them every boot regardless.
         reputation.set(GOOD_MERCHANT, 85);
         reputation.set(SKETCHY_MERCHANT, 12);
     }
