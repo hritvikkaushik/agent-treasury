@@ -11,10 +11,14 @@ TreasuryApplication           @SpringBootApplication @EnableAsync @EnableSchedul
 
 api/        ProxyController          POST /proxy  (agent ingress, X-Agent-Key auth)
             DashboardController      GET /api/dashboard/{agents,payments}
+            AdminController          /api/admin/agents CRUD (create/update/rotate/delete) — UNAUTHENTICATED
             PaymentRequest           request DTO (payee, asset, amountAtomic)
             PaymentResult            response DTO (intentId, state, denialReason, denialDetail, txHash)
             AgentView, PaymentView   dashboard DTOs
+            AdminAgentView, CreateAgentRequest, ... admin DTOs
 agent/      AgentService             API-key auth (SHA-256 hash lookup)
+            AgentAdminService        create/update agents, generate + hash API keys
+static/     index.html (monitoring dashboard), admin.html (agent/policy admin)
 service/    TreasuryService          orchestrator (@Transactional)
 policy/     PolicyEngine             pure evaluation
             AgentPolicy, PaymentContext, Decision, DenialReason

@@ -98,10 +98,22 @@ else:            intent.transitionTo(FAILED)
 return PaymentResult.of(intents.save(intent))
 ```
 
-## 6. Auth (`agent.AgentService`)
+## 6. Auth & agent management (`agent`)
 
+`AgentService`:
 - `authenticate(apiKey)` → `agents.findByApiKeyHash(sha256Hex(apiKey))`.
 - `sha256Hex(String)` — SHA-256 → lowercase hex. API keys are never stored in clear.
+
+`AgentAdminService` (runtime agent provisioning):
+- `create(req)` — generate id (if absent) + a random API key `atk_<hex>`, store only its hash, persist
+  the policy/allowlists, return `(AgentEntity, plaintextKey)`. The plaintext key is returned **once**.
+- `update(id, req)` — update name/policy/allowlists via `AgentEntity` mutators.
+- `rotateKey(id)` — generate a new key, store its hash, return plaintext once.
+- `delete(id)`.
+- `newApiKey()` — `"atk_" + 32 random hex chars` (SecureRandom).
+
+`AgentEntity` gains mutators used only by the admin path: `rename`, `updatePolicy(perTxCap,
+dailyBudget, velocity, minReputation)`, `setAllowedMerchants/Assets`, `setApiKeyHash`.
 
 ## 7. API (`api`)
 
@@ -116,6 +128,15 @@ Response: `PaymentResult{ intentId, state, denialReason, denialDetail, txHash }`
   spentTodayAtomic, velocityPerMinute, minReputation).
 - `GET /api/dashboard/payments` → `PaymentView[]` from `findTop50ByOrderByCreatedAtDesc()`
   (intentId, agentId, payee, amountAtomic, state, denialReason, denialDetail, txHash, createdAt).
+
+### `AdminController` (`/api/admin/agents`) — unauthenticated; local/demo only
+- `GET` → `AdminAgentView[]` (full policy + allowlists).
+- `POST` (`CreateAgentRequest`) → `201 {apiKey, agent}` — key shown once.
+- `PUT /{id}` (`UpdateAgentRequest`) → `200 AdminAgentView`.
+- `POST /{id}/rotate-key` → `200 {apiKey}`.
+- `DELETE /{id}` → `204`.
+Validation: `name` not blank; amounts/velocity `>= 0`; `minReputation` in `[0,100]`. All monetary
+fields are atomic units. Unknown id → `404`.
 
 ## 8. Payment execution (`payment`)
 
@@ -169,9 +190,11 @@ Address/Utf8String/DynamicArray/Bytes32`.
 
 ## 11. Seeding (`bootstrap.DataSeeder`) — `CommandLineRunner`
 
-Upserts demo agent `agent-1` (key `demo-key-agent-1`, perTxCap 0.50, daily 5.00, velocity 5/min,
-minRep 60, allowlist {good 0x6f40…, sketchy 0x0000…dEaD}, asset USDC) and sets stub reputations
-(good 85, sketchy 12). Upsert (not create-if-absent) so the key/policy are always correct.
+Seeds demo agent `agent-1` **only if absent** (key `demo-key-agent-1`, perTxCap 0.50, daily 5.00,
+velocity 5/min, minRep 60, allowlist {good 0x6f40…, sketchy 0x0000…dEaD}, asset USDC) and sets stub
+reputations (good 85, sketchy 12). Create-if-absent (not upsert) so policy edits made via the admin
+dashboard survive restarts. (The truncate-wipes-agent footgun is handled by `scripts/demo-reset.sh`,
+which never truncates `agents`.)
 
 ## 12. Schema (`db/migration/V1__init.sql`)
 

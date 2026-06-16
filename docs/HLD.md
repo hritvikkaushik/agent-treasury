@@ -30,8 +30,9 @@ Goals (all met and verified on Fuji):
 - Post-settlement feedback raises the counterparty's on-chain reputation.
 - A dashboard shows budget burn-down, the payment feed, and blocked attempts with reasons.
 
-Non-goals: multi-chain/multi-asset, policy-admin UI, multi-tenancy, the ERC-8004 validation registry,
-production key management (HSM/KMS).
+Non-goals: multi-chain/multi-asset, multi-tenancy, the ERC-8004 validation registry, production key
+management (HSM/KMS), and **auth on the admin surface** (agent/policy management is unauthenticated —
+local/demo only). Agent & policy management itself **is** in scope via the admin dashboard.
 
 ## 3. System context
 
@@ -59,7 +60,8 @@ production key management (HSM/KMS).
 
 | Component | Responsibility |
 |-----------|----------------|
-| **Proxy / API** (`api`) | Agent ingress (`POST /proxy`), API-key auth, dashboard JSON, static UI |
+| **Proxy / API** (`api`) | Agent ingress (`POST /proxy`), API-key auth, dashboard JSON, admin CRUD, static UI |
+| **Agent admin** (`agent.AgentAdminService`, `api.AdminController`) | Create/update agents + policies, mint API keys (admin dashboard) |
 | **Orchestrator** (`service.TreasuryService`) | Coordinates: idempotent intent → policy → settle → ledger → feedback |
 | **Policy engine** (`policy`) | Pure, deterministic evaluation of all spend rules; deny-by-default |
 | **Ledger** (`ledger`) | Double-entry journal; daily-spend query |

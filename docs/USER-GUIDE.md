@@ -22,6 +22,24 @@ pre-provisioned:
 
 (Keys are stored only as hashes; the treasury never sees your key in clear after lookup.)
 
+## Configuring agents & policies (admin dashboard)
+
+Agents and their spending rules are **not hardcoded** — an operator manages them from the admin
+dashboard at **`http://localhost:8090/admin.html`** (or the [admin API](./USAGE.md#7a-admin-api--manage-agents--policies)).
+
+There you can:
+- **Add an agent** — give it a name and a policy, and the dashboard shows a freshly minted **API key
+  once** (copy it then; only its hash is stored). Hand that key to the agent.
+- **Edit a policy** — per-transaction cap, daily budget (both in USD), payments-per-minute, minimum
+  counterparty reputation, the merchant allowlist, and the allowed assets.
+- **Rotate a key** or **delete** an agent.
+
+Changes take effect immediately — the next `POST /proxy` is evaluated against the new policy. This is
+how you'd onboard a new agent or tighten/loosen limits without touching code.
+
+> The admin dashboard is **unauthenticated** in this build — it's meant for local/demo operation, not
+> public exposure.
+
 ## Making a payment
 
 `POST /proxy` with the merchant address, the asset (USDC), and the amount in **atomic units**

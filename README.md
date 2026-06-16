@@ -57,7 +57,8 @@ cp .env.example .env                 # fill throwaway testnet keys + addresses
 docker run -d --name treasury-app --network host --env-file .env \
   -v "$PWD/treasury":/app -w /app -v "$HOME/.m2":/root/.m2 \
   maven:3.9-eclipse-temurin-21 mvn -q spring-boot:run
-# Dashboard: http://localhost:8090/   ·   add -e X402_ENABLED=true -e ERC8004_ENABLED=true for real chain
+# Monitoring dashboard: http://localhost:8090/   ·   Admin (add/configure agents): http://localhost:8090/admin.html
+# add -e X402_ENABLED=true -e ERC8004_ENABLED=true for real chain
 ```
 Full instructions: [docs/USAGE.md](./docs/USAGE.md). Demo: [DEMO.md](./DEMO.md).
 

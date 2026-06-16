@@ -104,7 +104,51 @@ curl -s -X POST localhost:8090/proxy \
 ```
 
 ### `GET /api/dashboard/agents` / `GET /api/dashboard/payments`
-Read-only JSON for the dashboard (budget/spend; recent payment feed). Amounts are atomic (÷1e6 = USDC).
+Read-only JSON for the monitoring dashboard (budget/spend; recent payment feed). Amounts are atomic
+(÷1e6 = USDC).
+
+## 7a. Admin API — manage agents & policies
+
+Create and configure agents at runtime (no redeploy, no SQL). Backed by the **admin dashboard** at
+`http://localhost:8090/admin.html`. All monetary fields are **atomic units** (the UI converts from USDC).
+
+> ⚠️ **Unauthenticated — local/demo use only.** These endpoints can create agents and mint API keys;
+> do not expose the app publicly with them enabled.
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET` | `/api/admin/agents` | list agents with full policy + allowlists |
+| `POST` | `/api/admin/agents` | create an agent; **returns the API key once** |
+| `PUT` | `/api/admin/agents/{id}` | update name / policy / allowlists |
+| `POST` | `/api/admin/agents/{id}/rotate-key` | issue a new API key (returns it once) |
+| `DELETE` | `/api/admin/agents/{id}` | remove an agent |
+
+Create request body:
+```json
+{
+  "id": "research-bot",                 // optional; auto-generated if omitted
+  "name": "Research Bot",
+  "perTxCapAtomic": 500000,             // 0.50 USDC
+  "dailyBudgetAtomic": 5000000,         // 5.00 USDC
+  "velocityPerMinute": 5,
+  "minReputation": 60,
+  "allowedMerchants": ["0x6f40…"],
+  "allowedAssets": ["0x5425890298aed601595a70AB815c96711a31Bc65"]
+}
+```
+Create/rotate response (the key is shown **only once** — it's stored as a SHA-256 hash):
+```json
+{ "apiKey": "atk_9f3c…", "agent": { "id": "research-bot", "name": "Research Bot", ... } }
+```
+Example:
+```bash
+curl -s -X POST localhost:8090/api/admin/agents -H "Content-Type: application/json" -d '{
+  "name":"Research Bot","perTxCapAtomic":500000,"dailyBudgetAtomic":5000000,
+  "velocityPerMinute":5,"minReputation":60,
+  "allowedMerchants":["0x6f409644a8a0b598284e8ca1a7562759f2189fbf"],
+  "allowedAssets":["0x5425890298aed601595a70AB815c96711a31Bc65"]}'
+```
+The returned `apiKey` is what the agent sends as `X-Agent-Key` on `POST /proxy`.
 
 ## 8. Scripts
 
@@ -117,8 +161,8 @@ Read-only JSON for the dashboard (budget/spend; recent payment feed). Amounts ar
 
 ## 9. Troubleshooting
 
-- **401 on /proxy** — wrong/missing `X-Agent-Key`; the demo key is `demo-key-agent-1` (the seeder
-  upserts the agent on boot).
+- **401 on /proxy** — wrong/missing `X-Agent-Key`. The demo key is `demo-key-agent-1` (seeded on boot
+  if absent). For other agents, use the key returned when you created them in the admin dashboard.
 - **402 unexpectedly** — check the `denialReason`; for reputation, confirm the payee is registered and
   scored (`scripts/read.js`).
 - **settle fails (502)** — treasury wallet lacks USDC, or the facilitator wallet lacks AVAX for gas.

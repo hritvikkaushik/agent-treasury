@@ -95,7 +95,20 @@ tx instantly, `StubReputationProvider` serves in-memory scores, `NoOpFeedbackWri
 reconciliation is absent. The orchestration, policy, ledger, idempotency, and API behave identically —
 which is why the 38-test suite exercises the real flow without a chain.
 
-## 8. Phase-0 smoke test (standalone, `smoke-test/`)
+## 8. Agent provisioning (admin)
+
+```
+Operator → admin.html → POST /api/admin/agents {name, policy, allowlists}
+  AdminController → AgentAdminService.create:
+     generate id (if absent) + API key "atk_…"
+     store agent + policy + SHA-256(key)
+  ← 201 { apiKey: "atk_…"  (shown ONCE), agent: {...} }
+Operator hands apiKey to the agent → agent uses it as X-Agent-Key on POST /proxy.
+```
+Editing a policy (`PUT /api/admin/agents/{id}`) takes effect on the next `/proxy` call — no restart.
+The demo agent `agent-1` is still auto-seeded (create-if-absent) so the app works out of the box.
+
+## 9. Phase-0 smoke test (standalone, `smoke-test/`)
 
 ```
 build Authorization → Eip3009Signer.sign → base64 X-PAYMENT (printed)
