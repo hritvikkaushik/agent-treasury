@@ -6,6 +6,6 @@
 # This script clears only payments + ledger, keeping the agent. On-chain reputation is unaffected.
 set -euo pipefail
 
-docker exec treasury-pg psql -U treasury -d treasury -c \
+docker exec "${DB_CONTAINER:-deploy-db-1}" psql -U treasury -d treasury -c \
   "truncate payment_intent, journal_entry cascade;" >/dev/null \
   && echo "payment feed + ledger cleared (demo agent kept)."
